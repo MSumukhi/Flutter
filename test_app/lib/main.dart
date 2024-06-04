@@ -21,25 +21,66 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: FutureBuilder<List<Patient>>(
-        future: authenticateAndGetPatients(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.done) {
-            if (snapshot.hasData) {
-              return PatientListScreen(patients: snapshot.data!);
-            } else {
-              return Center(child: Text('Failed to load patients'));
-            }
-          }
-          return const Center(child: CircularProgressIndicator());
-        },
+      home: LoginScreen(),
+    );
+  }
+}
+
+class LoginScreen extends StatefulWidget {
+  @override
+  _LoginScreenState createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+
+  void _login() async {
+    String username = _usernameController.text;
+    String password = _passwordController.text;
+
+    // Authenticate and get patients
+    List<Patient> patients = await authenticateAndGetPatients(username, password);
+
+    // Navigate to PatientListScreen with the fetched patients
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => PatientListScreen(patients: patients),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Login')),
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Column(
+          children: <Widget>[
+            TextField(
+              controller: _usernameController,
+              decoration: InputDecoration(labelText: 'Username'),
+            ),
+            TextField(
+              controller: _passwordController,
+              decoration: InputDecoration(labelText: 'Password'),
+              obscureText: true,
+            ),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _login,
+              child: Text('Login'),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-Future<List<Patient>> authenticateAndGetPatients() async {
-  await authenticateUser('Sumu1231', 'Sumukhi@1231');
+Future<List<Patient>> authenticateAndGetPatients(String username, String password) async {
+  await authenticateUser(username, password);
   return await getPatientData();
 }
 

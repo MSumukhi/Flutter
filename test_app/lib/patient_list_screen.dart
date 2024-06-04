@@ -14,10 +14,10 @@ class PatientListScreen extends StatelessWidget {
       ),
       body: GridView.builder(
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3, // Adjusted for better readability
-          crossAxisSpacing: 4,
-          mainAxisSpacing: 4,
-          childAspectRatio: 3/2,
+          crossAxisCount: 2, // Adjust column count as needed
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: 3 / 2, // Adjust aspect ratio for better layout
         ),
         itemCount: patients.length,
         itemBuilder: (_, index) {
@@ -29,11 +29,20 @@ class PatientListScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Text('${patients[index].firstName} ${patients[index].lastName}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  Text('ID: ${patients[index].id}', style: TextStyle(color: Colors.grey[600])),
-                  Text('Address: ${patients[index].address1}, ${patients[index].city}, ${patients[index].state} ${patients[index].zipCode}'),
-                  Text('Email: ${patients[index].email}'),
-                  Text('Birth Date: ${patients[index].birthDate}'),
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  Text('ID: ${patients[index].id}'),
+                  if (patients[index].address1 != null && patients[index].address1!.isNotEmpty)
+                    Text('Address: ${patients[index].address1}, ${patients[index].city}'),
+                  if (patients[index].email != null && patients[index].email!.isNotEmpty)
+                    Text('Email: ${patients[index].email}'),
+                  if (patients[index].birthDate != null && patients[index].birthDate!.isNotEmpty)
+                    Text('Birth Date: ${patients[index].birthDate}'),
+                  if (patients[index].phone != null && patients[index].phone!.isNotEmpty)
+                    Text('Phone: ${patients[index].phone}'),
+                  if (patients[index].employerName != null && patients[index].employerName!.isNotEmpty)
+                    Text('Employer: ${patients[index].employerName}'),
+                  if (patients[index].state != null && patients[index].state!.isNotEmpty)
+                    Text('State: ${patients[index].state}'),
                 ],
               ),
             ),
