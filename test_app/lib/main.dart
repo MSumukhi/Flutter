@@ -98,10 +98,7 @@ Future<void> getVitalsData(String patientId) async {
       if (response.statusCode == 200) {
         final List<dynamic> observations = jsonDecode(response.body)['db'];
         
-        // Debug: Print all observation names
-        final observationNames = observations.map((obs) => obs['obs_name']).toSet();
-        print('All observation names: $observationNames');
-
+        // Filter and map observations to vitals
         final List<Map<String, dynamic>> vitals = observations
             .where((obs) => obs['pat_id'] == patientId &&
                 observationNameMapping.containsKey(obs['obs_name']))
