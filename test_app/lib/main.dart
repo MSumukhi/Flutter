@@ -67,6 +67,21 @@ Future<void> getPatientData() async {
   }
 }
 
+// Mapping of observation names from the database to the expected vital names
+const Map<String, String> observationNameMapping = {
+  'BODY HEIGHT': 'Height',
+  'BODY WEIGHT': 'Weight',
+  'BODY TEMPERATURE': 'Temp',
+  'HEART RATE': 'Pulse',
+  'RESPIRATION RATE': 'Resp',
+  'BMI': 'BMI',
+  'Systolic BP': 'Blood Pressure',
+  'Diastolic BP': 'Blood Pressure',
+  'O2 Sat': 'O2 Sat',
+  'Head Circ': 'Head Circ',
+  'Waist Circ': 'Waist Circ'
+};
+
 // Function to retrieve vitals data
 Future<void> getVitalsData(String patientId) async {
   if (bearerToken != null) {
@@ -82,12 +97,16 @@ Future<void> getVitalsData(String patientId) async {
 
       if (response.statusCode == 200) {
         final List<dynamic> observations = jsonDecode(response.body)['db'];
+        
+        // Debug: Print all observation names
+        final observationNames = observations.map((obs) => obs['obs_name']).toSet();
+        print('All observation names: $observationNames');
+
         final List<Map<String, dynamic>> vitals = observations
             .where((obs) => obs['pat_id'] == patientId &&
-                ['Height', 'Weight', 'BMI', 'Blood Pressure', 'Pulse', 'Temp', 'Resp', 'O2 Sat', 'Head Circ', 'Waist Circ']
-                    .contains(obs['obs_name']))
+                observationNameMapping.containsKey(obs['obs_name']))
             .map((obs) => {
-                  'name': obs['obs_name'],
+                  'name': observationNameMapping[obs['obs_name']],
                   'result': obs['obs_result'],
                   'date': obs['observed_datetime'],
                   'units': obs['obs_units'] ?? ''
