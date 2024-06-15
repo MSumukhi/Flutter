@@ -80,7 +80,30 @@ Future<void> getObservationData() async {
           print('Patient ID: ${observation['pat_id']}');
           print('Observation Name: ${observation['obs_name']}');
           print('Observation Result: ${observation['obs_result']}');
-          // Print other observation details as needed
+          print('Observer ID: ${observation['observer_id']}');
+          print('Observed DateTime: ${observation['observed_datetime']}');
+          print('Observation Code: ${observation['obs_code']}');
+          print('Template ID: ${observation['template_id']}');
+          print('Revision Number: ${observation['revision_number']}');
+          print('User ID: ${observation['user_id']}');
+          print('Observation Order: ${observation['obs_order']}');
+          print('Observation Range: ${observation['obs_range']}');
+          print('Observation Units: ${observation['obs_units']}');
+          print('Observation Flag: ${observation['obs_flag']}');
+          print('Observation Status: ${observation['obs_status']}');
+          print('Verified DateTime: ${observation['verified_datetime']}');
+          print('Restricted: ${observation['restricted']}');
+          print('Create DateTime: ${observation['create_datetime']}');
+          print('Modified DateTime: ${observation['modified_datetime']}');
+          print('Interface: ${observation['interface']}');
+          print('Observation Ext ID: ${observation['obs_ext_id']}');
+          print('Test Comments: ${observation['test_comments']}');
+          print('Free Text: ${observation['free_text']}');
+          print('Micro Result: ${observation['micro_result']}');
+          print('Interpretive Text: ${observation['interpretive_text']}');
+          print('Inpatient: ${observation['inpatient']}');
+          print('Observed Start TS: ${observation['observed_start_ts']}');
+          print('Observed End TS: ${observation['observed_end_ts']}');
           print('--------------------------------');
         }
       } else {
