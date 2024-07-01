@@ -21,8 +21,8 @@ class HealthDataScreen extends StatefulWidget {
 
 class _HealthDataScreenState extends State<HealthDataScreen> {
   int totalSteps = 0;
-  double height = 0.0;
-  double weight = 0.0;
+  double heightInFeet = 0.0;
+  double weightInLbs = 0.0;
 
   @override
   void initState() {
@@ -84,16 +84,24 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
         
         List<HealthDataPoint> healthData = await health.getHealthDataFromTypes(twoYearsAgo, now, types);
 
+        double heightInMeters = 0.0;
+        double weightInKg = 0.0;
+
         for (var data in healthData) {
           if (data.type == HealthDataType.HEIGHT) {
-            height = data.value.toDouble();
+            heightInMeters = data.value.toDouble();
           } else if (data.type == HealthDataType.WEIGHT) {
-            weight = data.value.toDouble();
+            weightInKg = data.value.toDouble();
           }
         }
 
-        print('Height in meters: $height');
-        print('Weight in kg: $weight');
+        setState(() {
+          heightInFeet = heightInMeters * 3.28084;
+          weightInLbs = weightInKg * 2.20462;
+        });
+
+        print('Height in feet: $heightInFeet');
+        print('Weight in lbs: $weightInLbs');
       } catch (e) {
         print('Caught exception in getHealthDataFromTypes: $e');
       }
@@ -113,8 +121,8 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text('Total steps today: $totalSteps'),
-            Text('Height in meters: $height'),
-            Text('Weight in kg: $weight'),
+            Text('Height in feet: ${heightInFeet.toStringAsFixed(2)}'),
+            Text('Weight in lbs: ${weightInLbs.toStringAsFixed(2)}'),
           ],
         ),
       ),
