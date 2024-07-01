@@ -86,7 +86,7 @@ Future<void> updateWebChartWithHealthData(String patientId, double height, doubl
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: jsonEncode(observations),
+        body: jsonEncode({'observations': observations}),
       );
 
       print('Update WebChart data response status code: ${response.statusCode}');

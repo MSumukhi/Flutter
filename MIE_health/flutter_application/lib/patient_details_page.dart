@@ -14,52 +14,66 @@ class PatientDetailsPage extends StatefulWidget {
 }
 
 class _PatientDetailsPageState extends State<PatientDetailsPage> {
+  bool _showUpdateButton = false;
+  String _updateMessage = '';
+
   @override
   void initState() {
     super.initState();
-    _compareAndUpdateVitals();
+    _compareVitals();
   }
 
-  void _compareAndUpdateVitals() {
+  void _compareVitals() {
     double webChartHeight = double.parse(widget.vitals.firstWhere((vital) => vital['name'] == 'Height')['result']);
     double webChartWeight = double.parse(widget.vitals.firstWhere((vital) => vital['name'] == 'Weight')['result']);
+    DateTime? webChartHeightTime;
+    DateTime? webChartWeightTime;
+
+    String heightDateStr = widget.vitals.firstWhere((vital) => vital['name'] == 'Height')['date'];
+    String weightDateStr = widget.vitals.firstWhere((vital) => vital['name'] == 'Weight')['date'];
+
+    try {
+      webChartHeightTime = heightDateStr.isNotEmpty ? DateTime.parse(heightDateStr) : null;
+    } catch (e) {
+      print('Error parsing height date: $e');
+    }
+
+    try {
+      webChartWeightTime = weightDateStr.isNotEmpty ? DateTime.parse(weightDateStr) : null;
+    } catch (e) {
+      print('Error parsing weight date: $e');
+    }
 
     if (widget.healthHeight != webChartHeight || widget.healthWeight != webChartWeight) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showUpdateDialog();
+      setState(() {
+        _showUpdateButton = true;
+        if (widget.healthHeight != webChartHeight) {
+          if (webChartHeightTime == null || webChartHeightTime.isBefore(DateTime.now())) {
+            _updateMessage += 'There is a more recent height value from Health data.\n';
+          }
+        }
+        if (widget.healthWeight != webChartWeight) {
+          if (webChartWeightTime == null || webChartWeightTime.isBefore(DateTime.now())) {
+            _updateMessage += 'There is a more recent weight value from Health data.\n';
+          }
+        }
       });
     }
   }
 
-  Future<void> _showUpdateDialog() async {
-    bool update = await showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Update WebChart Data'),
-          content: Text('There are differences between Health data and WebChart data for height and weight. Do you want to update WebChart with the latest Health data?'),
-          actions: [
-            TextButton(
-              child: Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop(false);
-              },
-            ),
-            TextButton(
-              child: Text('Update'),
-              onPressed: () {
-                Navigator.of(context).pop(true);
-              },
-            ),
-          ],
-        );
-      },
-    );
+  Future<void> _updateVitals() async {
+    await updateWebChartWithHealthData(widget.patientData['pat_id'], widget.healthHeight, widget.healthWeight);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('WebChart updated successfully.')));
 
-    if (update) {
-      await updateWebChartWithHealthData(widget.patientData['pat_id'], widget.healthHeight, widget.healthWeight);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('WebChart updated successfully.')));
-    }
+    // Update the vitals to reflect the changes
+    setState(() {
+      widget.vitals.firstWhere((vital) => vital['name'] == 'Height')['result'] = widget.healthHeight.toString();
+      widget.vitals.firstWhere((vital) => vital['name'] == 'Weight')['result'] = widget.healthWeight.toString();
+      widget.vitals.firstWhere((vital) => vital['name'] == 'Height')['date'] = DateTime.now().toIso8601String();
+      widget.vitals.firstWhere((vital) => vital['name'] == 'Weight')['date'] = DateTime.now().toIso8601String();
+      _showUpdateButton = false;
+      _updateMessage = '';
+    });
   }
 
   @override
@@ -85,11 +99,26 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
             ),
             ExpansionTile(
               title: Text('Vitals'),
-              children: widget.vitals.map((vital) {
-                return ListTile(
-                  title: Text('${vital['name']}: ${vital['result']} ${vital['units']} (${vital['date']})'),
-                );
-              }).toList(),
+              children: [
+                ...widget.vitals.map((vital) {
+                  return ListTile(
+                    title: Text('${vital['name']}: ${vital['result']} ${vital['units']} (${vital['date']})'),
+                  );
+                }).toList(),
+                if (_showUpdateButton) ...[
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Text(
+                      _updateMessage,
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: _updateVitals,
+                    child: Text('Update WebChart with Health Data'),
+                  ),
+                ]
+              ],
             ),
           ],
         ),
