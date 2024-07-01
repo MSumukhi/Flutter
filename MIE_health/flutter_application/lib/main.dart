@@ -181,6 +181,8 @@ class _MyHomePageState extends State<MyHomePage> {
             builder: (context) => PatientDetailsPage(
               patientData: _patientData!,
               vitals: _vitals,
+              healthHeight: _height,
+              healthWeight: _weight,
             ),
           ),
         );
