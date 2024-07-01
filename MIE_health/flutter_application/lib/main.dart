@@ -1,27 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:health/health.dart';
+import 'package:intl/intl.dart';
 
-void main() => runApp(MyApp());
+void main() {
+  runApp(MyApp());
+}
 
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: MyHomePage(),
+      home: HealthDataScreen(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
+class HealthDataScreen extends StatefulWidget {
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  _HealthDataScreenState createState() => _HealthDataScreenState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _steps = 0;
-  double _height = 0;
-  double _weight = 0;
-  HealthFactory _health = HealthFactory();
+class _HealthDataScreenState extends State<HealthDataScreen> {
+  int totalSteps = 0;
+  double height = 0.0;
+  double weight = 0.0;
 
   @override
   void initState() {
@@ -30,64 +32,81 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> fetchHealthData() async {
-    var types = [
-      HealthDataType.STEPS,
-      HealthDataType.HEIGHT,
-      HealthDataType.WEIGHT,
-    ];
+    await fetchSteps();
+    await fetchHeightAndWeight();
+    setState(() {});
+  }
 
+  Future<void> fetchSteps() async {
     final now = DateTime.now();
-    final startDate = now.subtract(Duration(days: 7)); // Adjust the duration as needed
+    final midnight = DateTime(now.year, now.month, now.day);
 
-    bool requested = await _health.requestAuthorization(types);
+    final health = HealthFactory();
+    final types = [HealthDataType.STEPS];
+    final permissions = [HealthDataAccess.READ];
+
+    bool requested = await health.requestAuthorization(types, permissions: permissions);
     if (requested) {
       try {
-        // Fetch steps
-        int? steps = await _health.getTotalStepsInInterval(now.subtract(Duration(days: 1)), now);
-        print('Steps fetched: $steps');
-
-        // Fetch height and weight
-        List<HealthDataPoint> healthData = await _health.getHealthDataFromTypes(
-          startDate,
-          now,
-          types,
-        );
-
-        double height = 0;
-        double weight = 0;
+        List<HealthDataPoint> healthData = await health.getHealthDataFromTypes(midnight, now, types);
+        int steps = 0;
 
         for (var data in healthData) {
-          print('Health data point: ${data.type} - ${data.value} at ${data.dateFrom}');
-          if (data.type == HealthDataType.HEIGHT && data.value is num) {
-            height = (data.value as num).toDouble();
-          } else if (data.type == HealthDataType.WEIGHT && data.value is num) {
-            weight = (data.value as num).toDouble();
+          if (data.type == HealthDataType.STEPS) {
+            steps += data.value.round();
           }
         }
 
         setState(() {
-          _steps = steps ?? 0;
-          _height = height * 3.28084; // converting meters to feet
-          _weight = weight * 2.20462; // converting kg to pounds
+          totalSteps = steps;
         });
 
-        print('Total number of steps: $_steps');
-        print('Height in meters: $height');
-        print('Height in feet: $_height');
-        print('Weight in kg: $weight');
-        print('Weight in lbs: $_weight');
-      } catch (error) {
-        print("Caught exception in fetchHealthData: $error");
+        print('Total steps today: $totalSteps');
+      } catch (e) {
+        print('Caught exception in getHealthDataFromTypes: $e');
       }
     } else {
-      print("Authorization not granted - error in authorization");
+      print('Authorization not granted');
     }
   }
 
-  String _formatHeight(double height) {
-    int feet = height.floor();
-    int inches = ((height - feet) * 12).round();
-    return "$feet' $inches\"";
+  Future<void> fetchHeightAndWeight() async {
+    final health = HealthFactory();
+    final types = [HealthDataType.HEIGHT, HealthDataType.WEIGHT];
+    final permissions = [HealthDataAccess.READ];
+
+    bool requested = await health.requestAuthorization(types, permissions: permissions);
+    if (requested) {
+      try {
+        final now = DateTime.now();
+        final midnight = DateTime(now.year, now.month, now.day);
+
+        List<HealthDataPoint> healthData = await health.getHealthDataFromTypes(midnight, now, types);
+
+        double tempHeight = 0.0;
+        double tempWeight = 0.0;
+
+        for (var data in healthData) {
+          if (data.type == HealthDataType.HEIGHT) {
+            tempHeight = data.value.toDouble();  // Casting to double
+          } else if (data.type == HealthDataType.WEIGHT) {
+            tempWeight = data.value.toDouble();  // Casting to double
+          }
+        }
+
+        setState(() {
+          height = tempHeight;
+          weight = tempWeight;
+        });
+
+        print('Height in meters: $height');
+        print('Weight in kg: $weight');
+      } catch (e) {
+        print('Caught exception in getHealthDataFromTypes: $e');
+      }
+    } else {
+      print('Authorization not granted');
+    }
   }
 
   @override
@@ -97,64 +116,13 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text('Health Data'),
       ),
       body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Total Steps:',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              Text(
-                '$_steps',
-                style: TextStyle(
-                  fontSize: 40,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              SizedBox(height: 20),
-              Text(
-                'Height:',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              Text(
-                _formatHeight(_height),
-                style: TextStyle(
-                  fontSize: 40,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              SizedBox(height: 20),
-              Text(
-                'Weight:',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              Text(
-                '${_weight.toStringAsFixed(1)} lbs',
-                style: TextStyle(
-                  fontSize: 40,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-            ],
-          ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Text('Total steps today: $totalSteps'),
+            Text('Height in meters: $height'),
+            Text('Weight in kg: $weight'),
+          ],
         ),
       ),
     );
