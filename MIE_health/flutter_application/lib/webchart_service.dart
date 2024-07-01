@@ -55,7 +55,7 @@ Future<Map<String, dynamic>?> getPatientData() async {
   return null;
 }
 
-// Function to update WebChart with Health Data
+// Function to update WebChart with Health 
 Future<void> updateWebChartWithHealthData(String patientId, double height, double weight) async {
   if (bearerToken != null) {
     try {
