@@ -104,7 +104,7 @@ Future<void> updateWebChartWithHealthData(String patientId, double height, doubl
   }
 }
 
-// Function to retrieve latest vitals data
+// Function to retrieve latest vitals data from health
 Future<List<Map<String, dynamic>>> getVitalsData(String patientId) async {
   if (bearerToken != null) {
     try {
