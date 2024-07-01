@@ -78,30 +78,19 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
     if (requested) {
       try {
         final now = DateTime.now();
-        final oneYearAgo = DateTime(now.year - 1, now.month, now.day);
+        final twoYearsAgo = DateTime(now.year - 2, now.month, now.day);
 
-        print('Fetching health data from $oneYearAgo to $now for types $types');
+        print('Fetching health data from $twoYearsAgo to $now for types $types');
         
-        List<HealthDataPoint> healthData = await health.getHealthDataFromTypes(oneYearAgo, now, types);
-
-        double tempHeight = 0.0;
-        double tempWeight = 0.0;
+        List<HealthDataPoint> healthData = await health.getHealthDataFromTypes(twoYearsAgo, now, types);
 
         for (var data in healthData) {
-          print('Data point: ${data.type} - ${data.value}');
           if (data.type == HealthDataType.HEIGHT) {
-            tempHeight = data.value.toDouble();  // Casting to double
-            print('Fetched height: $tempHeight meters');
+            height = data.value.toDouble();
           } else if (data.type == HealthDataType.WEIGHT) {
-            tempWeight = data.value.toDouble();  // Casting to double
-            print('Fetched weight: $tempWeight kg');
+            weight = data.value.toDouble();
           }
         }
-
-        setState(() {
-          height = tempHeight;
-          weight = tempWeight;
-        });
 
         print('Height in meters: $height');
         print('Weight in kg: $weight');
