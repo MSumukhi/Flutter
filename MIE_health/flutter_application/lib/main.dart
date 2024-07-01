@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:health/health.dart';
 import 'webchart_service.dart'; // Import the webchart_service.dart
+import 'patient_details_page.dart'; // Import the new patient_details_page.dart
 
 void main() => runApp(MyApp());
 
@@ -162,12 +163,29 @@ class _MyHomePageState extends State<MyHomePage> {
               onPressed: () async {
                 Navigator.of(context).pop();
                 await fetchWebChartData(username, password);
+                navigateToPatientDetailsPage();
               },
             ),
           ],
         );
       },
     );
+  }
+
+  void navigateToPatientDetailsPage() {
+    if (_patientData != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PatientDetailsPage(
+              patientData: _patientData!,
+              vitals: _vitals,
+            ),
+          ),
+        );
+      });
+    }
   }
 
   Future<void> fetchWebChartData(String username, String password) async {
@@ -305,36 +323,6 @@ class _MyHomePageState extends State<MyHomePage> {
                         child: Text('Access WebChart Data'),
                       ),
                     ),
-                    if (_patientData != null) ...[
-                      SizedBox(height: 20),
-                      Text(
-                        'Patient Details:',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      Text('ID: ${_patientData!['pat_id']}'),
-                      Text('First Name: ${_patientData!['first_name']}'),
-                      Text('Last Name: ${_patientData!['last_name']}'),
-                      Text('Email: ${_patientData!['email']}'),
-                      Text('Birth Date: ${_patientData!['birth_date']}'),
-                      Text('Phone: ${_patientData!['cell_phone']}'),
-                    ],
-                    if (_vitals.isNotEmpty) ...[
-                      SizedBox(height: 20),
-                      Text(
-                        'Vitals:',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      for (var vital in _vitals)
-                        Text('${vital['name']}: ${vital['result']} ${vital['units']} (${vital['date']})'),
-                    ]
                   ],
                 ),
               ),
