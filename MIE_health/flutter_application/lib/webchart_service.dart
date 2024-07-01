@@ -55,7 +55,7 @@ Future<Map<String, dynamic>?> getPatientData() async {
   return null;
 }
 
-// Function to update WebChart with Health 
+// Function to update WebChart with Health Data
 Future<void> updateWebChartWithHealthData(String patientId, double height, double weight) async {
   if (bearerToken != null) {
     try {
@@ -80,7 +80,7 @@ Future<void> updateWebChartWithHealthData(String patientId, double height, doubl
       print('Observations to be sent: ${jsonEncode(observations)}');
 
       final response = await http.put(
-        Uri.parse('$apiUrl/UFVUL2RiL29ic2VydmF0aW9ucw=='),  // Base64 encoded URL
+        Uri.parse('$apiUrl/UFVUL2RiL29ic2VydmF0aW9ucw=='), // Base64 encoded URL
         headers: {
           'Authorization': 'Bearer $bearerToken',
           'Content-Type': 'application/json',
@@ -104,7 +104,7 @@ Future<void> updateWebChartWithHealthData(String patientId, double height, doubl
   }
 }
 
-// Function to retrieve latest vitals data from health
+// Function to retrieve latest vitals data
 Future<List<Map<String, dynamic>>> getVitalsData(String patientId) async {
   if (bearerToken != null) {
     try {
@@ -119,8 +119,7 @@ Future<List<Map<String, dynamic>>> getVitalsData(String patientId) async {
 
         // Filter and map observations to vitals
         final List<Map<String, dynamic>> vitals = observations
-            .where((obs) => obs['pat_id'] == patientId &&
-                observationNameMapping.containsKey(obs['obs_name']))
+            .where((obs) => obs['pat_id'] == patientId && observationNameMapping.containsKey(obs['obs_name']))
             .map((obs) => {
                   'name': observationNameMapping[obs['obs_name']],
                   'result': obs['obs_result'],
@@ -128,18 +127,21 @@ Future<List<Map<String, dynamic>>> getVitalsData(String patientId) async {
                   'units': obs['obs_units'] ?? ''
                 })
             .toList();
-        
-        // Sort vitals by observed_datetime and keep only the latest entry for each vital type
-        Map<String, Map<String, dynamic>> latestVitals = {};
+
+        // Ensure all vitals are present, set to zero if not found
+        final Map<String, Map<String, dynamic>> latestVitals = {};
         for (var vital in vitals) {
           if (!latestVitals.containsKey(vital['name']) || DateTime.parse(latestVitals[vital['name']]!['date']).isBefore(DateTime.parse(vital['date']))) {
             latestVitals[vital['name']] = vital;
           }
         }
+        final allVitals = _getDefaultVitals().map((defaultVital) {
+          return latestVitals[defaultVital['name']] ?? defaultVital;
+        }).toList();
 
-        print('Retrieved vitals: $latestVitals');
+        print('Retrieved vitals: $allVitals');
 
-        return latestVitals.values.toList();
+        return allVitals;
       } else {
         print('Failed to retrieve vitals data: ${response.statusCode}');
       }
@@ -166,3 +168,18 @@ const Map<String, String> observationNameMapping = {
   'Head Circ': 'Head Circ',
   'Waist Circ': 'Waist Circ'
 };
+
+List<Map<String, dynamic>> _getDefaultVitals() {
+  return [
+    {'name': 'Height', 'result': '0', 'units': 'ft', 'date': ''},
+    {'name': 'Weight', 'result': '0', 'units': 'lbs', 'date': ''},
+    {'name': 'BMI', 'result': '0', 'units': '', 'date': ''},
+    {'name': 'Blood Pressure', 'result': '0/0', 'units': '', 'date': ''},
+    {'name': 'Pulse', 'result': '0', 'units': '', 'date': ''},
+    {'name': 'Temp', 'result': '0', 'units': '', 'date': ''},
+    {'name': 'Resp', 'result': '0', 'units': '', 'date': ''},
+    {'name': 'O2 Sat', 'result': '0', 'units': '', 'date': ''},
+    {'name': 'Head Circ', 'result': '0', 'units': '', 'date': ''},
+    {'name': 'Waist Circ', 'result': '0', 'units': '', 'date': ''},
+  ];
+}

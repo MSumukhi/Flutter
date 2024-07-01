@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:health/health.dart';
-import 'webchart_service.dart';  // Import the webchart_service.dart
+import 'webchart_service.dart'; // Import the webchart_service.dart
 
 void main() => runApp(MyApp());
 
@@ -26,7 +26,6 @@ class _MyHomePageState extends State<MyHomePage> {
   int _steps = 0;
   double _height = 0;
   double _weight = 0;
-  DateTime _healthDataTime = DateTime.now();
   Map<String, dynamic>? _patientData;
   List<Map<String, dynamic>> _vitals = [];
   HealthFactory _health = HealthFactory();
@@ -92,12 +91,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
         double height = 0;
         double weight = 0;
-        DateTime latestTime = DateTime.now();
 
         for (var data in healthData) {
-          if (data.dateFrom.isAfter(latestTime)) {
-            latestTime = data.dateFrom;
-          }
           if (data.type == HealthDataType.HEIGHT) {
             height = data.value.toDouble();
           } else if (data.type == HealthDataType.WEIGHT) {
@@ -108,7 +103,6 @@ class _MyHomePageState extends State<MyHomePage> {
         setState(() {
           _height = height * 3.28084; // converting meters to feet
           _weight = weight * 2.20462; // converting kg to pounds
-          _healthDataTime = latestTime;
         });
 
         print('Height in meters: $height');
@@ -198,61 +192,12 @@ class _MyHomePageState extends State<MyHomePage> {
         _patientData = patientData;
         _vitals = webChartVitals.isNotEmpty ? webChartVitals : _getDefaultVitals();
       });
-
-      // Compare height and weight, prompt for update if necessary
-      for (var vital in webChartVitals) {
-        if (vital['name'] == 'Height' && (vital['result'] == '0' || DateTime.parse(vital['date']).isBefore(_healthDataTime))) {
-          await promptForUpdate('Height', _height, 'ft');
-        } else if (vital['name'] == 'Weight' && (vital['result'] == '0' || DateTime.parse(vital['date']).isBefore(_healthDataTime))) {
-          await promptForUpdate('Weight', _weight, 'lbs');
-        }
-      }
-
-      // Update WebChart with the latest Health data if not already done
-      await updateWebChartWithHealthData(patientData['pat_id'], _height, _weight);
-
     } catch (e) {
       print('Error fetching WebChart data: $e');
       setState(() {
         _vitals = _getDefaultVitals();
       });
     }
-  }
-
-  Future<void> promptForUpdate(String vitalName, double value, String unit) async {
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: false, // User must tap button to close dialog
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Update WebChart'),
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: <Widget>[
-                Text('Health data has more recent $vitalName value.'),
-                Text('Would you like to update WebChart with this value?'),
-              ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: Text('Update'),
-              onPressed: () async {
-                Navigator.of(context).pop();
-                await updateWebChartWithHealthData(_patientData!['pat_id'], vitalName == 'Height' ? value : _height, vitalName == 'Weight' ? value : _weight);
-                await fetchWebChartData(_patientData!['username'], _patientData!['password']);
-              },
-            ),
-          ],
-        );
-      },
-    );
   }
 
   List<Map<String, dynamic>> _getDefaultVitals() {
