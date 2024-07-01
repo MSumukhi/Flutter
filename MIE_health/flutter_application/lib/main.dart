@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:health/health.dart';
-import 'package:intl/intl.dart';
 
 void main() {
   runApp(MyApp());
@@ -73,24 +72,29 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
   Future<void> fetchHeightAndWeight() async {
     final health = HealthFactory();
     final types = [HealthDataType.HEIGHT, HealthDataType.WEIGHT];
-    final permissions = [HealthDataAccess.READ];
+    final permissions = [HealthDataAccess.READ, HealthDataAccess.READ];
 
     bool requested = await health.requestAuthorization(types, permissions: permissions);
     if (requested) {
       try {
         final now = DateTime.now();
-        final midnight = DateTime(now.year, now.month, now.day);
+        final oneYearAgo = DateTime(now.year - 1, now.month, now.day);
 
-        List<HealthDataPoint> healthData = await health.getHealthDataFromTypes(midnight, now, types);
+        print('Fetching health data from $oneYearAgo to $now for types $types');
+        
+        List<HealthDataPoint> healthData = await health.getHealthDataFromTypes(oneYearAgo, now, types);
 
         double tempHeight = 0.0;
         double tempWeight = 0.0;
 
         for (var data in healthData) {
+          print('Data point: ${data.type} - ${data.value}');
           if (data.type == HealthDataType.HEIGHT) {
             tempHeight = data.value.toDouble();  // Casting to double
+            print('Fetched height: $tempHeight meters');
           } else if (data.type == HealthDataType.WEIGHT) {
             tempWeight = data.value.toDouble();  // Casting to double
+            print('Fetched weight: $tempWeight kg');
           }
         }
 
