@@ -62,14 +62,14 @@ Future<void> updateWebChartWithHealthData(String patientId, double height, doubl
       final List<Map<String, dynamic>> observations = [
         {
           'pat_id': patientId,
-          'loinc_code': '8302-2', // Height LOINC code
+          'obs_name': 'BODY HEIGHT',
           'obs_result': height.toStringAsFixed(2),
           'obs_units': 'ft',
           'observed_datetime': DateTime.now().toIso8601String()
         },
         {
           'pat_id': patientId,
-          'loinc_code': '29463-7', // Weight LOINC code
+          'obs_name': 'BODY WEIGHT',
           'obs_result': weight.toStringAsFixed(2),
           'obs_units': 'lbs',
           'observed_datetime': DateTime.now().toIso8601String()
@@ -91,21 +91,17 @@ Future<void> updateWebChartWithHealthData(String patientId, double height, doubl
 
       print('Update WebChart data response status code: ${response.statusCode}');
       print('Update WebChart data response body: ${response.body}');
-      if (response.statusCode == 200) {
-        print('Successfully updated WebChart data.');
-      } else {
-        print('Failed to update WebChart data: ${response.statusCode}');
-      }
     } catch (e) {
       print('Error updating WebChart data: $e');
     }
   } else {
-    print('Bearer token not available. Cannot make request to update WebChart data.');
+    print('Bearer token not available. Cannot update WebChart data.');
   }
 }
 
-// Function to retrieve latest vitals data
-Future<List<Map<String, dynamic>>> getVitalsData(String patientId) async {
+// Function to get vitals data by Name
+Future<List<Map<String, dynamic>>> getVitalsDataByName(String patientId) async {
+  List<Map<String, dynamic>> vitals = [];
   if (bearerToken != null) {
     try {
       final String encodedOperation = base64Encode(utf8.encode('GET/db/observations'));
@@ -113,72 +109,81 @@ Future<List<Map<String, dynamic>>> getVitalsData(String patientId) async {
         Uri.parse('$apiUrl/$encodedOperation'),
         headers: {'Authorization': 'Bearer $bearerToken', 'Accept': 'application/json'},
       );
+
       print('Get vitals data response status code: ${response.statusCode}');
       if (response.statusCode == 200) {
         final List<dynamic> observations = jsonDecode(response.body)['db'];
+        print('Raw observations: ${observations}');
 
-        // Filter and map observations to vitals using LOINC codes
-        final List<Map<String, dynamic>> vitals = observations
-            .where((obs) => obs['pat_id'] == patientId && observationLoincMapping.containsKey(obs['loinc_code']))
-            .map((obs) => {
-                  'name': observationLoincMapping[obs['loinc_code']],
-                  'result': obs['obs_result'],
-                  'date': obs['observed_datetime'],
-                  'units': obs['obs_units'] ?? ''
-                })
-            .toList();
+        final Map<String, String> vitalNames = {
+          'BODY HEIGHT': 'Height',
+          'BODY WEIGHT': 'Weight',
+          'BMI': 'BMI',
+          // Add other mappings as needed
+        };
 
-        // Ensure all vitals are present, set to zero if not found
-        final Map<String, Map<String, dynamic>> latestVitals = {};
-        for (var vital in vitals) {
-          if (!latestVitals.containsKey(vital['name']) || DateTime.parse(latestVitals[vital['name']]!['date']).isBefore(DateTime.parse(vital['date']))) {
-            latestVitals[vital['name']] = vital;
+        for (var observation in observations) {
+          if (observation['pat_id'] == patientId) {
+            String? name = vitalNames[observation['obs_name']];
+            if (name != null) {
+              vitals.add({
+                'name': name,
+                'obs_name': observation['obs_name'],
+                'result': double.tryParse(observation['obs_result'])?.toStringAsFixed(2) ?? observation['obs_result'],
+                'date': observation['observed_datetime'],
+                'units': observation['obs_units']
+              });
+            }
           }
         }
-        final allVitals = _getDefaultVitals().map((defaultVital) {
-          return latestVitals[defaultVital['name']] ?? defaultVital;
-        }).toList();
-
-        print('Retrieved vitals: $allVitals');
-
-        return allVitals;
-      } else {
-        print('Failed to retrieve vitals data: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error retrieving vitals data: $e');
+      print('Error retrieving vitals by Name: $e');
     }
-  } else {
-    print('Bearer token not available. Cannot make request for vitals data.');
   }
-  return [];
+  return vitals;
 }
 
-// Mapping of LOINC codes to the expected vital names
-const Map<String, String> observationLoincMapping = {
-  '8302-2': 'Height',
-  '29463-7': 'Weight',
-  '8310-5': 'Temp',
-  '8867-4': 'Pulse',
-  '9279-1': 'Resp',
-  '39156-5': 'BMI',
-  '8480-6': 'Blood Pressure',
-  '2708-6': 'O2 Sat',
-  '8287-5': 'Head Circ',
-  '56115-9': 'Waist Circ' // assuming this is the LOINC for waist circumference
-};
+// Function to get vitals data by LOINC
+Future<List<Map<String, dynamic>>> getVitalsDataByLOINC(String patientId) async {
+  List<Map<String, dynamic>> vitals = [];
+  if (bearerToken != null) {
+    try {
+      final String encodedOperation = base64Encode(utf8.encode('GET/db/observations'));
+      final response = await http.get(
+        Uri.parse('$apiUrl/$encodedOperation'),
+        headers: {'Authorization': 'Bearer $bearerToken', 'Accept': 'application/json'},
+      );
 
-List<Map<String, dynamic>> _getDefaultVitals() {
-  return [
-    {'name': 'Height', 'result': '0', 'units': 'ft', 'date': ''},
-    {'name': 'Weight', 'result': '0', 'units': 'lbs', 'date': ''},
-    {'name': 'BMI', 'result': '0', 'units': '', 'date': ''},
-    {'name': 'Blood Pressure', 'result': '0/0', 'units': '', 'date': ''},
-    {'name': 'Pulse', 'result': '0', 'units': '', 'date': ''},
-    {'name': 'Temp', 'result': '0', 'units': '', 'date': ''},
-    {'name': 'Resp', 'result': '0', 'units': '', 'date': ''},
-    {'name': 'O2 Sat', 'result': '0', 'units': '', 'date': ''},
-    {'name': 'Head Circ', 'result': '0', 'units': '', 'date': ''},
-    {'name': 'Waist Circ', 'result': '0', 'units': '', 'date': ''},
-  ];
+      print('Get vitals data response status code: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        final List<dynamic> observations = jsonDecode(response.body)['db'];
+        print('Raw observations: ${observations}');
+
+        final Map<String, String> loincCodes = {
+          '8302-2': 'Height',
+          '29463-7': 'Weight',
+          '39156-5': 'BMI',
+          // Add other LOINC mappings as needed
+        };
+
+        for (var observation in observations) {
+          if (observation['pat_id'] == patientId) {
+            String? name = loincCodes[observation['obs_code']];
+            if (name != null) {
+              vitals.add({
+                'name': name,
+                'result': double.tryParse(observation['obs_result'])?.toStringAsFixed(2) ?? observation['obs_result'],
+                'date': observation['observed_datetime'],
+                'units': observation['obs_units']
+              });
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('Error retrieving vitals by LOINC: $e');
+    }
+  }
+  return vitals;
 }
