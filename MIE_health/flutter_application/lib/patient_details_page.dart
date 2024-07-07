@@ -24,13 +24,13 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
   }
 
   void _compareVitals() {
-    double webChartHeight = double.parse(widget.vitals.firstWhere((vital) => vital['name'] == 'Height')['result']);
-    double webChartWeight = double.parse(widget.vitals.firstWhere((vital) => vital['name'] == 'Weight')['result']);
+    double webChartHeight = double.parse(widget.vitals.firstWhere((vital) => vital['loinc_code'] == '8302-2', orElse: () => {'result': '0'})['result']);
+    double webChartWeight = double.parse(widget.vitals.firstWhere((vital) => vital['loinc_code'] == '29463-7', orElse: () => {'result': '0'})['result']);
     DateTime? webChartHeightTime;
     DateTime? webChartWeightTime;
 
-    String heightDateStr = widget.vitals.firstWhere((vital) => vital['name'] == 'Height')['date'];
-    String weightDateStr = widget.vitals.firstWhere((vital) => vital['name'] == 'Weight')['date'];
+    String heightDateStr = widget.vitals.firstWhere((vital) => vital['loinc_code'] == '8302-2', orElse: () => {'date': ''})['date'];
+    String weightDateStr = widget.vitals.firstWhere((vital) => vital['loinc_code'] == '29463-7', orElse: () => {'date': ''})['date'];
 
     try {
       webChartHeightTime = heightDateStr.isNotEmpty ? DateTime.parse(heightDateStr) : null;
@@ -67,10 +67,8 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
 
     // Update the vitals to reflect the changes
     setState(() {
-      widget.vitals.firstWhere((vital) => vital['name'] == 'Height')['result'] = widget.healthHeight.toString();
-      widget.vitals.firstWhere((vital) => vital['name'] == 'Weight')['result'] = widget.healthWeight.toString();
-      widget.vitals.firstWhere((vital) => vital['name'] == 'Height')['date'] = DateTime.now().toIso8601String();
-      widget.vitals.firstWhere((vital) => vital['name'] == 'Weight')['date'] = DateTime.now().toIso8601String();
+      widget.vitals.firstWhere((vital) => vital['loinc_code'] == '8302-2', orElse: () => {'result': widget.healthHeight.toString(), 'date': DateTime.now().toIso8601String()});
+      widget.vitals.firstWhere((vital) => vital['loinc_code'] == '29463-7', orElse: () => {'result': widget.healthWeight.toString(), 'date': DateTime.now().toIso8601String()});
       _showUpdateButton = false;
       _updateMessage = '';
     });

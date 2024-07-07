@@ -1,6 +1,8 @@
+
 import 'package:flutter/material.dart';
 import 'package:health/health.dart';
-import 'webchart_service.dart';  // Import the webchart_service.dart
+import 'webchart_service.dart'; // Import the webchart_service.dart
+import 'patient_details_page.dart'; // Import the new patient_details_page.dart
 
 void main() => runApp(MyApp());
 
@@ -26,7 +28,6 @@ class _MyHomePageState extends State<MyHomePage> {
   int _steps = 0;
   double _height = 0;
   double _weight = 0;
-  DateTime _healthDataTime = DateTime.now();
   Map<String, dynamic>? _patientData;
   List<Map<String, dynamic>> _vitals = [];
   HealthFactory _health = HealthFactory();
@@ -92,12 +93,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
         double height = 0;
         double weight = 0;
-        DateTime latestTime = DateTime.now();
 
         for (var data in healthData) {
-          if (data.dateFrom.isAfter(latestTime)) {
-            latestTime = data.dateFrom;
-          }
           if (data.type == HealthDataType.HEIGHT) {
             height = data.value.toDouble();
           } else if (data.type == HealthDataType.WEIGHT) {
@@ -108,7 +105,6 @@ class _MyHomePageState extends State<MyHomePage> {
         setState(() {
           _height = height * 3.28084; // converting meters to feet
           _weight = weight * 2.20462; // converting kg to pounds
-          _healthDataTime = latestTime;
         });
 
         print('Height in meters: $height');
@@ -168,12 +164,31 @@ class _MyHomePageState extends State<MyHomePage> {
               onPressed: () async {
                 Navigator.of(context).pop();
                 await fetchWebChartData(username, password);
+                navigateToPatientDetailsPage();
               },
             ),
           ],
         );
       },
     );
+  }
+
+  void navigateToPatientDetailsPage() {
+    if (_patientData != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PatientDetailsPage(
+              patientData: _patientData!,
+              vitals: _vitals,
+              healthHeight: _height,
+              healthWeight: _weight,
+            ),
+          ),
+        );
+      });
+    }
   }
 
   Future<void> fetchWebChartData(String username, String password) async {
@@ -196,21 +211,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
       setState(() {
         _patientData = patientData;
-        _vitals = _mergeWithDefaultVitals(webChartVitals);
+        _vitals = webChartVitals.isNotEmpty ? webChartVitals : _getDefaultVitals();
       });
-
-      // Compare height and weight, prompt for update if necessary
-      for (var vital in _vitals) {
-        if (vital['name'] == 'Height' && (vital['result'] == '0' || DateTime.parse(vital['date']).isBefore(_healthDataTime))) {
-          await promptForUpdate('Height', _height, 'ft');
-        } else if (vital['name'] == 'Weight' && (vital['result'] == '0' || DateTime.parse(vital['date']).isBefore(_healthDataTime))) {
-          await promptForUpdate('Weight', _weight, 'lbs');
-        }
-      }
-
-      // Update WebChart with the latest Health data if not already done
-      await updateWebChartWithHealthData(patientData['pat_id'], _height, _weight);
-
     } catch (e) {
       print('Error fetching WebChart data: $e');
       setState(() {
@@ -219,197 +221,118 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  List<Map<String, dynamic>> _mergeWithDefaultVitals(List<Map<String, dynamic>> webChartVitals) {
-    final defaultVitals = _getDefaultVitals();
-    final Map<String, Map<String, dynamic>> latestVitals = { for (var vital in defaultVitals) vital['name']: vital };
-
-    for (var vital in webChartVitals) {
-      if (latestVitals.containsKey(vital['name'])) {
-        latestVitals[vital['name']] = vital;
-      }
-    }
-
-    return latestVitals.values.toList();
-  }
-
-  Future<void> promptForUpdate(String vitalName, double value, String unit) async {
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: false, // User must tap button to close dialog
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Update WebChart'),
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: <Widget>[
-                Text('Health data has more recent $vitalName value.'),
-                Text('Would you like to update WebChart with this value?'),
-              ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: Text('Update'),
-              onPressed: () async {
-                Navigator.of(context).pop();
-                await updateWebChartWithHealthData(_patientData!['pat_id'], vitalName == 'Height' ? value : _height, vitalName == 'Weight' ? value : _weight);
-                await fetchWebChartData(_patientData!['username'], _patientData!['password']);
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   List<Map<String, dynamic>> _getDefaultVitals() {
     return [
-      {'name': 'Height', 'result': '0', 'units': 'ft', 'date': '', 'loincCode': '8302-2'},
-      {'name': 'Weight', 'result': '0', 'units': 'lbs', 'date': '', 'loincCode': '29463-7'},
-      {'name': 'BMI', 'result': '0', 'units': '', 'date': '', 'loincCode': '39156-5'},
-      {'name': 'Blood Pressure', 'result': '0/0', 'units': '', 'date': '', 'loincCode': '8480-6'},
-      {'name': 'Pulse', 'result': '0', 'units': '', 'date': '', 'loincCode': '8867-4'},
-      {'name': 'Temp', 'result': '0', 'units': '', 'date': '', 'loincCode': '8310-5'},
-      {'name': 'Resp', 'result': '0', 'units': '', 'date': '', 'loincCode': '9279-1'},
-      {'name': 'O2 Sat', 'result': '0', 'units': '', 'date': '', 'loincCode': '2708-6'},
-      {'name': 'Head Circ', 'result': '0', 'units': '', 'date': '', 'loincCode': '8287-5'},
-      {'name': 'Waist Circ', 'result': '0', 'units': '', 'date': '', 'loincCode': '56086-2'},
+      {'name': 'Height', 'result': '0', 'units': 'ft', 'date': ''},
+      {'name': 'Weight', 'result': '0', 'units': 'lbs', 'date': ''},
+      {'name': 'BMI', 'result': '0', 'units': '', 'date': ''},
+      {'name': 'Blood Pressure', 'result': '0/0', 'units': '', 'date': ''},
+      {'name': 'Pulse', 'result': '0', 'units': '', 'date': ''},
+      {'name': 'Temp', 'result': '0', 'units': '', 'date': ''},
+      {'name': 'Resp', 'result': '0', 'units': '', 'date': ''},
+      {'name': 'O2 Sat', 'result': '0', 'units': '', 'date': ''},
+      {'name': 'Head Circ', 'result': '0', 'units': '', 'date': ''},
+      {'name': 'Waist Circ', 'result': '0', 'units': '', 'date': ''},
     ];
   }
 
   String _formatHeight(double height) {
-  int feet = height.floor();
-  int inches = ((height - feet) * 12).round();
-  return "$feet' $inches\"";
-}
+    int feet = height.floor();
+    int inches = ((height - feet) * 12).round();
+    return "$feet' $inches\"";
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-    backgroundColor: Colors.white,
-    body: Center(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.5),
-                spreadRadius: 5,
-                blurRadius: 7,
-                offset: Offset(0, 3), // changes position of shadow
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: SingleChildScrollView( // Add SingleChildScrollView to handle overflow
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Total Steps:',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  Text(
-                    '$_steps',
-                    style: TextStyle(
-                      fontSize: 40,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                  SizedBox(height: 20),
-                  Text(
-                    'Height:',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  Text(
-                    _formatHeight(_height),
-                    style: TextStyle(
-                      fontSize: 40,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                  SizedBox(height: 20),
-                  Text(
-                    'Weight:',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  Text(
-                    '${_weight.toStringAsFixed(1)} lbs',
-                    style: TextStyle(
-                      fontSize: 40,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                  SizedBox(height: 20),
-                  Center(
-                    child: ElevatedButton(
-                      onPressed: showLoginDialog,
-                      child: Text('Access WebChart Data'),
-                    ),
-                  ),
-                  if (_patientData != null) ...[
-                    SizedBox(height: 20),
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.5),
+                  spreadRadius: 5,
+                  blurRadius: 7,
+                  offset: Offset(0, 3), // changes position of shadow
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: SingleChildScrollView( // Add SingleChildScrollView to handle overflow
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      'Patient Details:',
+                      'Total Steps:',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
                       ),
                     ),
-                    Text('ID: ${_patientData!['pat_id']}'),
-                    Text('First Name: ${_patientData!['first_name']}'),
-                    Text('Last Name: ${_patientData!['last_name']}'),
-                    Text('Email: ${_patientData!['email']}'),
-                    Text('Birth Date: ${_patientData!['birth_date']}'),
-                    Text('Phone: ${_patientData!['cell_phone']}'),
+                    Text(
+                      '$_steps',
+                      style: TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    Text(
+                      'Height:',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    Text(
+                      _formatHeight(_height),
+                      style: TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    Text(
+                      'Weight:',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    Text(
+                      '${_weight.toStringAsFixed(1)} lbs',
+                      style: TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    Center(
+                      child: ElevatedButton(
+                        onPressed: showLoginDialog,
+                        child: Text('Access WebChart Data'),
+                      ),
+                    ),
                   ],
-                  if (_vitals.isNotEmpty) ...[
-                    SizedBox(height: 20),
-                    Text(
-                      'Vitals:',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    for (var vital in _vitals)
-                      Text('${vital['name']}: ${vital['result']} ${vital['units']} (${vital['date']}) [LOINC Code: ${vital['loincCode']}]'),
-                  ]
-                ],
+                ),
               ),
             ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }
