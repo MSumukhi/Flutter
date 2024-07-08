@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'webchart_service.dart'; // Import the webchart_service.dart
+import 'fhir_patient_page.dart'; // Import the FhirPatientPage
 
 class PatientDetailsPage extends StatefulWidget {
   final Map<String, dynamic> patientData;
@@ -34,22 +35,19 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
   }
 
   void _compareVitals() {
-    double webChartHeight = double.tryParse(widget.vitals.firstWhere((vital) => vital['name'] == 'Height', orElse: () => {'result': '0'})['result']) ?? 0;
-    double webChartWeight = double.tryParse(widget.vitals.firstWhere((vital) => vital['name'] == 'Weight', orElse: () => {'result': '0'})['result']) ?? 0;
-    
-    String bloodPressure = widget.vitals.firstWhere((vital) => vital['name'] == 'Blood Pressure', orElse: () => {'result': '0/0'})['result'];
-    List<String> bloodPressureValues = bloodPressure.split('/');
-    double webChartSystolic = bloodPressureValues.length > 0 ? double.tryParse(bloodPressureValues[0]) ?? 0 : 0;
-    double webChartDiastolic = bloodPressureValues.length > 1 ? double.tryParse(bloodPressureValues[1]) ?? 0 : 0;
-
+    double webChartHeight = _getVitalResult('Height', 0.0);
+    double webChartWeight = _getVitalResult('Weight', 0.0);
+    double webChartSystolic = _getVitalResult('Blood Pressure', 0.0, isSystolic: true);
+    double webChartDiastolic = _getVitalResult('Blood Pressure', 0.0, isSystolic: false);
     DateTime? webChartHeightTime;
     DateTime? webChartWeightTime;
     DateTime? webChartSystolicTime;
     DateTime? webChartDiastolicTime;
 
-    String heightDateStr = widget.vitals.firstWhere((vital) => vital['name'] == 'Height', orElse: () => {'date': ''})['date'];
-    String weightDateStr = widget.vitals.firstWhere((vital) => vital['name'] == 'Weight', orElse: () => {'date': ''})['date'];
-    String bloodPressureDateStr = widget.vitals.firstWhere((vital) => vital['name'] == 'Blood Pressure', orElse: () => {'date': ''})['date'];
+    String heightDateStr = _getVitalDate('Height');
+    String weightDateStr = _getVitalDate('Weight');
+    String systolicDateStr = _getVitalDate('Blood Pressure', isSystolic: true);
+    String diastolicDateStr = _getVitalDate('Blood Pressure', isSystolic: false);
 
     try {
       webChartHeightTime = heightDateStr.isNotEmpty ? DateTime.parse(heightDateStr) : null;
@@ -64,9 +62,15 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
     }
 
     try {
-      webChartSystolicTime = bloodPressureDateStr.isNotEmpty ? DateTime.parse(bloodPressureDateStr) : null;
+      webChartSystolicTime = systolicDateStr.isNotEmpty ? DateTime.parse(systolicDateStr) : null;
     } catch (e) {
-      print('Error parsing blood pressure date: $e');
+      print('Error parsing systolic date: $e');
+    }
+
+    try {
+      webChartDiastolicTime = diastolicDateStr.isNotEmpty ? DateTime.parse(diastolicDateStr) : null;
+    } catch (e) {
+      print('Error parsing diastolic date: $e');
     }
 
     if (widget.healthHeight != webChartHeight || widget.healthWeight != webChartWeight || widget.healthSystolic != webChartSystolic || widget.healthDiastolic != webChartDiastolic) {
@@ -91,14 +95,33 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
     }
   }
 
+  double _getVitalResult(String name, double defaultValue, {bool isSystolic = true}) {
+    try {
+      var vital = widget.vitals.firstWhere((vital) => vital['name'] == name);
+      if (name == 'Blood Pressure') {
+        return isSystolic
+            ? double.parse(vital['result'].split('/')[0])
+            : double.parse(vital['result'].split('/')[1]);
+      }
+      return double.parse(vital['result']);
+    } catch (e) {
+      print('Error getting $name result: $e');
+      return defaultValue;
+    }
+  }
+
+  String _getVitalDate(String name, {bool isSystolic = true}) {
+    try {
+      var vital = widget.vitals.firstWhere((vital) => vital['name'] == name);
+      return vital['date'];
+    } catch (e) {
+      print('Error getting $name date: $e');
+      return '';
+    }
+  }
+
   Future<void> _updateVitals() async {
-    await updateWebChartWithHealthData(
-      widget.patientData['pat_id'],
-      widget.healthHeight,
-      widget.healthWeight,
-      widget.healthSystolic,
-      widget.healthDiastolic,
-    );
+    await updateWebChartWithHealthData(widget.patientData['pat_id'], widget.healthHeight, widget.healthWeight, widget.healthSystolic, widget.healthDiastolic);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('WebChart updated successfully.')));
 
     // Update the vitals to reflect the changes
@@ -133,6 +156,20 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
                 ListTile(title: Text('Email: ${widget.patientData['email']}')),
                 ListTile(title: Text('Birth Date: ${widget.patientData['birth_date']}')),
                 ListTile(title: Text('Phone: ${widget.patientData['cell_phone']}')),
+                ElevatedButton(
+                  onPressed: () async {
+                    final fhirData = await getFhirPatientResource(widget.patientData['pat_id']);
+                    if (fhirData != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => FhirPatientPage(fhirData: fhirData),
+                        ),
+                      );
+                    }
+                  },
+                  child: Text('Fetch FHIR Patient Resource'),
+                ),
               ],
             ),
             ExpansionTile(
@@ -155,7 +192,7 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
                     onPressed: _updateVitals,
                     child: Text('Update WebChart with Health Data'),
                   ),
-                ]
+                ],
               ],
             ),
           ],

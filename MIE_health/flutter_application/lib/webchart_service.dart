@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 
 String? bearerToken;
 final String apiUrl = 'https://sumukhi.webch.art/webchart.cgi/json';
+final String fhirApiUrl = 'https://sumukhi.webch.art/webchart.cgi/fhir';
 
 // Function to authenticate user and obtain bearer token
 Future<void> authenticateUser(String username, String password) async {
@@ -166,6 +167,31 @@ Future<List<Map<String, dynamic>>> getVitalsData(String patientId) async {
     print('Bearer token not available. Cannot make request for vitals data.');
   }
   return [];
+}
+
+// Function to retrieve FHIR Patient Resource
+Future<Map<String, dynamic>?> getFhirPatientResource(String patientId) async {
+  if (bearerToken != null) {
+    try {
+      final response = await http.get(
+        Uri.parse('$fhirApiUrl/Patient/$patientId'),
+        headers: {'Authorization': 'Bearer $bearerToken', 'Accept': 'application/fhir+json'},
+      );
+      print('Get FHIR patient resource response status code: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> fhirData = jsonDecode(response.body);
+        print('FHIR patient resource: $fhirData');
+        return fhirData;
+      } else {
+        print('Failed to retrieve FHIR patient resource: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error retrieving FHIR patient resource: $e');
+    }
+  } else {
+    print('Bearer token not available. Cannot make request for FHIR patient resource.');
+  }
+  return null;
 }
 
 // Mapping of observation names from the database to the expected vital names
