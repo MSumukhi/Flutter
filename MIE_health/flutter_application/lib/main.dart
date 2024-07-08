@@ -27,6 +27,8 @@ class _MyHomePageState extends State<MyHomePage> {
   int _steps = 0;
   double _height = 0;
   double _weight = 0;
+  double _systolic = 0;
+  double _diastolic = 0;
   Map<String, dynamic>? _patientData;
   List<Map<String, dynamic>> _vitals = [];
   HealthFactory _health = HealthFactory();
@@ -40,6 +42,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> fetchHealthData() async {
     await fetchSteps();
     await fetchHeightAndWeight();
+    await fetchBloodPressure();
     setState(() {});
   }
 
@@ -118,6 +121,46 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  Future<void> fetchBloodPressure() async {
+    var types = [
+      HealthDataType.BLOOD_PRESSURE_SYSTOLIC,
+      HealthDataType.BLOOD_PRESSURE_DIASTOLIC,
+    ];
+
+    final now = DateTime.now();
+    final startDate = now.subtract(Duration(days: 365 * 2));
+
+    bool requested = await _health.requestAuthorization(types);
+    if (requested) {
+      try {
+        List<HealthDataPoint> healthData = await _health.getHealthDataFromTypes(startDate, now, types);
+
+        double systolic = 0;
+        double diastolic = 0;
+
+        for (var data in healthData) {
+          if (data.type == HealthDataType.BLOOD_PRESSURE_SYSTOLIC) {
+            systolic = data.value.toDouble();
+          } else if (data.type == HealthDataType.BLOOD_PRESSURE_DIASTOLIC) {
+            diastolic = data.value.toDouble();
+          }
+        }
+
+        setState(() {
+          _systolic = systolic;
+          _diastolic = diastolic;
+        });
+
+        print('Systolic: $systolic');
+        print('Diastolic: $diastolic');
+      } catch (error) {
+        print("Caught exception in fetchBloodPressure: $error");
+      }
+    } else {
+      print("Authorization not granted - error in authorization");
+    }
+  }
+
   Future<void> showLoginDialog() async {
     String username = '';
     String password = '';
@@ -183,6 +226,8 @@ class _MyHomePageState extends State<MyHomePage> {
               vitals: _vitals,
               healthHeight: _height,
               healthWeight: _weight,
+              healthSystolic: _systolic,
+              healthDiastolic: _diastolic,
             ),
           ),
         );
@@ -225,7 +270,7 @@ class _MyHomePageState extends State<MyHomePage> {
       {'name': 'Height', 'result': '0', 'units': 'ft', 'date': ''},
       {'name': 'Weight', 'result': '0', 'units': 'lbs', 'date': ''},
       {'name': 'BMI', 'result': '0', 'units': '', 'date': ''},
-      {'name': 'Blood Pressure', 'result': '0/0', 'units': '', 'date': ''},
+      {'name': 'Blood Pressure', 'result': '0/0', 'units': 'mmHg', 'date': ''},
       {'name': 'Pulse', 'result': '0', 'units': '', 'date': ''},
       {'name': 'Temp', 'result': '0', 'units': '', 'date': ''},
       {'name': 'Resp', 'result': '0', 'units': '', 'date': ''},

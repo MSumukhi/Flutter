@@ -56,7 +56,7 @@ Future<Map<String, dynamic>?> getPatientData() async {
 }
 
 // Function to update WebChart with Health Data
-Future<void> updateWebChartWithHealthData(String patientId, double height, double weight) async {
+Future<void> updateWebChartWithHealthData(String patientId, double height, double weight, double systolic, double diastolic) async {
   if (bearerToken != null) {
     try {
       final List<Map<String, dynamic>> observations = [
@@ -72,6 +72,20 @@ Future<void> updateWebChartWithHealthData(String patientId, double height, doubl
           'obs_name': 'BODY WEIGHT',
           'obs_result': weight.toStringAsFixed(2),
           'obs_units': 'lbs',
+          'observed_datetime': DateTime.now().toIso8601String()
+        },
+        {
+          'pat_id': patientId,
+          'obs_name': 'Systolic BP',
+          'obs_result': systolic.toStringAsFixed(2),
+          'obs_units': 'mmHg',
+          'observed_datetime': DateTime.now().toIso8601String()
+        },
+        {
+          'pat_id': patientId,
+          'obs_name': 'Diastolic BP',
+          'obs_result': diastolic.toStringAsFixed(2),
+          'obs_units': 'mmHg',
           'observed_datetime': DateTime.now().toIso8601String()
         }
       ];
@@ -174,7 +188,7 @@ List<Map<String, dynamic>> _getDefaultVitals() {
     {'name': 'Height', 'result': '0', 'units': 'ft', 'date': ''},
     {'name': 'Weight', 'result': '0', 'units': 'lbs', 'date': ''},
     {'name': 'BMI', 'result': '0', 'units': '', 'date': ''},
-    {'name': 'Blood Pressure', 'result': '0/0', 'units': '', 'date': ''},
+    {'name': 'Blood Pressure', 'result': '0/0', 'units': 'mmHg', 'date': ''},
     {'name': 'Pulse', 'result': '0', 'units': '', 'date': ''},
     {'name': 'Temp', 'result': '0', 'units': '', 'date': ''},
     {'name': 'Resp', 'result': '0', 'units': '', 'date': ''},
