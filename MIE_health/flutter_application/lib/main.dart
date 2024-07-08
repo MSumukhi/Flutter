@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:health/health.dart';
-import 'webchart_service.dart';
-import 'patient_details_page.dart';
+import 'webchart_service.dart'; // Import the webchart_service.dart
+import 'patient_details_page.dart'; // Import the new patient_details_page.dart
 
 void main() => runApp(MyApp());
 
@@ -28,8 +28,7 @@ class _MyHomePageState extends State<MyHomePage> {
   double _height = 0;
   double _weight = 0;
   Map<String, dynamic>? _patientData;
-  List<Map<String, dynamic>> _vitalsByName = [];
-  List<Map<String, dynamic>> _vitalsByLOINC = [];
+  List<Map<String, dynamic>> _vitals = [];
   HealthFactory _health = HealthFactory();
 
   @override
@@ -181,8 +180,7 @@ class _MyHomePageState extends State<MyHomePage> {
           MaterialPageRoute(
             builder: (context) => PatientDetailsPage(
               patientData: _patientData!,
-              vitalsByName: _vitalsByName,
-              vitalsByLOINC: _vitalsByLOINC,
+              vitals: _vitals,
               healthHeight: _height,
               healthWeight: _weight,
             ),
@@ -199,30 +197,37 @@ class _MyHomePageState extends State<MyHomePage> {
       if (patientData == null || !patientData.containsKey('pat_id')) {
         print('No valid patient data found');
         setState(() {
-          _vitalsByName = _getDefaultVitals();
-          _vitalsByLOINC = _getDefaultVitals();
+          _vitals = _getDefaultVitals();
         });
         return;
       }
 
       print('Fetched patient data: $patientData');
 
-      final webChartVitalsByName = await getVitalsDataByName(patientData['pat_id']);
-      final webChartVitalsByLOINC = await getVitalsDataByLOINC(patientData['pat_id']);
-      print('Fetched webchart vitals by name: $webChartVitalsByName');
-      print('Fetched webchart vitals by LOINC: $webChartVitalsByLOINC');
+      // Fetch WebChart vitals
+      final webChartVitals = await getVitalsData(patientData['pat_id']);
+      print('Fetched webchart vitals: $webChartVitals');
 
       setState(() {
         _patientData = patientData;
-        _vitalsByName = webChartVitalsByName.isNotEmpty ? webChartVitalsByName : _getDefaultVitals();
-        _vitalsByLOINC = webChartVitalsByLOINC.isNotEmpty ? webChartVitalsByLOINC : _getDefaultVitals();
+        _vitals = webChartVitals.isNotEmpty ? webChartVitals : _getDefaultVitals();
       });
     } catch (e) {
       print('Error fetching WebChart data: $e');
       setState(() {
-        _vitalsByName = _getDefaultVitals();
-        _vitalsByLOINC = _getDefaultVitals();
+        _vitals = _getDefaultVitals();
       });
+    }
+  }
+
+  Future<void> copyPatientDataToLocal() async {
+    final localData = await getLocalPatientData();
+    if (localData == null) {
+      await fetchWebChartData('username', 'password'); // Replace with actual credentials or handle authentication
+      await savePatientData(_patientData!);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Patient data copied to local storage.')));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Patient data already exists in local storage.')));
     }
   }
 
@@ -263,13 +268,13 @@ class _MyHomePageState extends State<MyHomePage> {
                   color: Colors.grey.withOpacity(0.5),
                   spreadRadius: 5,
                   blurRadius: 7,
-                  offset: Offset(0, 3),
+                  offset: Offset(0, 3), // changes position of shadow
                 ),
               ],
             ),
             child: Padding(
               padding: const EdgeInsets.all(20.0),
-              child: SingleChildScrollView(
+              child: SingleChildScrollView( // Add SingleChildScrollView to handle overflow
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
