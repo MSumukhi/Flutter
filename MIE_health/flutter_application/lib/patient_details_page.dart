@@ -6,6 +6,8 @@ class PatientDetailsPage extends StatefulWidget {
   final List<Map<String, dynamic>> vitals;
   final double healthHeight;
   final double healthWeight;
+  final double healthSystolic;
+  final double healthDiastolic;
 
   const PatientDetailsPage({
     super.key,
@@ -13,6 +15,8 @@ class PatientDetailsPage extends StatefulWidget {
     required this.vitals,
     required this.healthHeight,
     required this.healthWeight,
+    required this.healthSystolic,
+    required this.healthDiastolic,
   });
 
   @override
@@ -30,13 +34,22 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
   }
 
   void _compareVitals() {
-    double webChartHeight = double.parse(widget.vitals.firstWhere((vital) => vital['name'] == 'Height')['result']);
-    double webChartWeight = double.parse(widget.vitals.firstWhere((vital) => vital['name'] == 'Weight')['result']);
+    double webChartHeight = double.tryParse(widget.vitals.firstWhere((vital) => vital['name'] == 'Height', orElse: () => {'result': '0'})['result']) ?? 0;
+    double webChartWeight = double.tryParse(widget.vitals.firstWhere((vital) => vital['name'] == 'Weight', orElse: () => {'result': '0'})['result']) ?? 0;
+    
+    String bloodPressure = widget.vitals.firstWhere((vital) => vital['name'] == 'Blood Pressure', orElse: () => {'result': '0/0'})['result'];
+    List<String> bloodPressureValues = bloodPressure.split('/');
+    double webChartSystolic = bloodPressureValues.length > 0 ? double.tryParse(bloodPressureValues[0]) ?? 0 : 0;
+    double webChartDiastolic = bloodPressureValues.length > 1 ? double.tryParse(bloodPressureValues[1]) ?? 0 : 0;
+
     DateTime? webChartHeightTime;
     DateTime? webChartWeightTime;
+    DateTime? webChartSystolicTime;
+    DateTime? webChartDiastolicTime;
 
-    String heightDateStr = widget.vitals.firstWhere((vital) => vital['name'] == 'Height')['date'];
-    String weightDateStr = widget.vitals.firstWhere((vital) => vital['name'] == 'Weight')['date'];
+    String heightDateStr = widget.vitals.firstWhere((vital) => vital['name'] == 'Height', orElse: () => {'date': ''})['date'];
+    String weightDateStr = widget.vitals.firstWhere((vital) => vital['name'] == 'Weight', orElse: () => {'date': ''})['date'];
+    String bloodPressureDateStr = widget.vitals.firstWhere((vital) => vital['name'] == 'Blood Pressure', orElse: () => {'date': ''})['date'];
 
     try {
       webChartHeightTime = heightDateStr.isNotEmpty ? DateTime.parse(heightDateStr) : null;
@@ -50,7 +63,13 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
       print('Error parsing weight date: $e');
     }
 
-    if (widget.healthHeight != webChartHeight || widget.healthWeight != webChartWeight) {
+    try {
+      webChartSystolicTime = bloodPressureDateStr.isNotEmpty ? DateTime.parse(bloodPressureDateStr) : null;
+    } catch (e) {
+      print('Error parsing blood pressure date: $e');
+    }
+
+    if (widget.healthHeight != webChartHeight || widget.healthWeight != webChartWeight || widget.healthSystolic != webChartSystolic || widget.healthDiastolic != webChartDiastolic) {
       setState(() {
         _showUpdateButton = true;
         if (widget.healthHeight != webChartHeight) {
@@ -63,12 +82,23 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
             _updateMessage += 'There is a more recent weight value from Health data.\n';
           }
         }
+        if (widget.healthSystolic != webChartSystolic || widget.healthDiastolic != webChartDiastolic) {
+          if (webChartSystolicTime == null || webChartSystolicTime.isBefore(DateTime.now()) || webChartDiastolicTime == null || webChartDiastolicTime.isBefore(DateTime.now())) {
+            _updateMessage += 'There is a more recent blood pressure value from Health data.\n';
+          }
+        }
       });
     }
   }
 
   Future<void> _updateVitals() async {
-    await updateWebChartWithHealthData(widget.patientData['pat_id'], widget.healthHeight, widget.healthWeight);
+    await updateWebChartWithHealthData(
+      widget.patientData['pat_id'],
+      widget.healthHeight,
+      widget.healthWeight,
+      widget.healthSystolic,
+      widget.healthDiastolic,
+    );
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('WebChart updated successfully.')));
 
     // Update the vitals to reflect the changes
@@ -77,21 +107,11 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
       widget.vitals.firstWhere((vital) => vital['name'] == 'Weight')['result'] = widget.healthWeight.toString();
       widget.vitals.firstWhere((vital) => vital['name'] == 'Height')['date'] = DateTime.now().toIso8601String();
       widget.vitals.firstWhere((vital) => vital['name'] == 'Weight')['date'] = DateTime.now().toIso8601String();
+      widget.vitals.firstWhere((vital) => vital['name'] == 'Blood Pressure')['result'] = '${widget.healthSystolic}/${widget.healthDiastolic}';
+      widget.vitals.firstWhere((vital) => vital['name'] == 'Blood Pressure')['date'] = DateTime.now().toIso8601String();
       _showUpdateButton = false;
       _updateMessage = '';
     });
-  }
-
-  void _viewAndCopyWebChartData() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ViewAndCopyDataPage(
-          patientData: widget.patientData,
-          vitals: widget.vitals,
-        ),
-      ),
-    );
   }
 
   @override
@@ -135,69 +155,8 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
                     onPressed: _updateVitals,
                     child: Text('Update WebChart with Health Data'),
                   ),
-                ],
+                ]
               ],
-            ),
-            Center(
-              child: ElevatedButton(
-                onPressed: _viewAndCopyWebChartData,
-                child: Text('View and Copy WebChart Data'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class ViewAndCopyDataPage extends StatelessWidget {
-  final Map<String, dynamic> patientData;
-  final List<Map<String, dynamic>> vitals;
-
-  const ViewAndCopyDataPage({super.key, required this.patientData, required this.vitals});
-
-  Future<void> _copyWebChartData(BuildContext context) async {
-    await savePatientData(patientData);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('WebChart data copied to local storage.')));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('View and Copy WebChart Data'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            ExpansionTile(
-              title: Text('Patient Details'),
-              children: [
-                ListTile(title: Text('ID: ${patientData['pat_id']}')),
-                ListTile(title: Text('First Name: ${patientData['first_name']}')),
-                ListTile(title: Text('Last Name: ${patientData['last_name']}')),
-                ListTile(title: Text('Email: ${patientData['email']}')),
-                ListTile(title: Text('Birth Date: ${patientData['birth_date']}')),
-                ListTile(title: Text('Phone: ${patientData['cell_phone']}')),
-              ],
-            ),
-            ExpansionTile(
-              title: Text('Vitals'),
-              children: [
-                ...vitals.map((vital) {
-                  return ListTile(
-                    title: Text('${vital['name']}: ${vital['result']} ${vital['units']} (${vital['date']})'),
-                  );
-                }).toList(),
-              ],
-            ),
-            Center(
-              child: ElevatedButton(
-                onPressed: () => _copyWebChartData(context),
-                child: Text('Copy WebChart Data to Local Storage'),
-              ),
             ),
           ],
         ),

@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 
 String? bearerToken;
 final String apiUrl = 'https://sumukhi.webch.art/webchart.cgi/json';
@@ -40,7 +39,6 @@ Future<Map<String, dynamic>?> getPatientData() async {
         final List<dynamic> patients = jsonDecode(response.body)['db'];
         final patient = patients.firstWhere((patient) => patient['pat_id'] == '111', orElse: () => null);
         if (patient != null) {
-          await savePatientData(patient);
           return patient;
         } else {
           print('Patient with ID 111 not found');
@@ -57,25 +55,8 @@ Future<Map<String, dynamic>?> getPatientData() async {
   return null;
 }
 
-// Function to save patient data to local storage
-Future<void> savePatientData(Map<String, dynamic> patientData) async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('patientData', jsonEncode(patientData));
-  print('Patient data saved locally.');
-}
-
-// Function to retrieve patient data from local storage
-Future<Map<String, dynamic>?> getLocalPatientData() async {
-  final prefs = await SharedPreferences.getInstance();
-  final String? patientDataString = prefs.getString('patientData');
-  if (patientDataString != null) {
-    return jsonDecode(patientDataString);
-  }
-  return null;
-}
-
 // Function to update WebChart with Health Data
-Future<void> updateWebChartWithHealthData(String patientId, double height, double weight) async {
+Future<void> updateWebChartWithHealthData(String patientId, double height, double weight, double systolic, double diastolic) async {
   if (bearerToken != null) {
     try {
       final List<Map<String, dynamic>> observations = [
@@ -91,6 +72,20 @@ Future<void> updateWebChartWithHealthData(String patientId, double height, doubl
           'obs_name': 'BODY WEIGHT',
           'obs_result': weight.toStringAsFixed(2),
           'obs_units': 'lbs',
+          'observed_datetime': DateTime.now().toIso8601String()
+        },
+        {
+          'pat_id': patientId,
+          'obs_name': 'Systolic BP',
+          'obs_result': systolic.toStringAsFixed(2),
+          'obs_units': 'mmHg',
+          'observed_datetime': DateTime.now().toIso8601String()
+        },
+        {
+          'pat_id': patientId,
+          'obs_name': 'Diastolic BP',
+          'obs_result': diastolic.toStringAsFixed(2),
+          'obs_units': 'mmHg',
           'observed_datetime': DateTime.now().toIso8601String()
         }
       ];
@@ -193,7 +188,7 @@ List<Map<String, dynamic>> _getDefaultVitals() {
     {'name': 'Height', 'result': '0', 'units': 'ft', 'date': ''},
     {'name': 'Weight', 'result': '0', 'units': 'lbs', 'date': ''},
     {'name': 'BMI', 'result': '0', 'units': '', 'date': ''},
-    {'name': 'Blood Pressure', 'result': '0/0', 'units': '', 'date': ''},
+    {'name': 'Blood Pressure', 'result': '0/0', 'units': 'mmHg', 'date': ''},
     {'name': 'Pulse', 'result': '0', 'units': '', 'date': ''},
     {'name': 'Temp', 'result': '0', 'units': '', 'date': ''},
     {'name': 'Resp', 'result': '0', 'units': '', 'date': ''},
