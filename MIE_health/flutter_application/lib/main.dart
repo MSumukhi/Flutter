@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:health/health.dart';
-import 'webchart_service.dart'; // Import the webchart_service.dart
-import 'patient_details_page.dart'; // Import the new patient_details_page.dart
+import 'webchart_service.dart';
+import 'patient_details_page.dart';
 
 void main() => runApp(MyApp());
 

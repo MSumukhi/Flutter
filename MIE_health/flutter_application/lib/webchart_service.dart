@@ -194,6 +194,31 @@ Future<Map<String, dynamic>?> getFhirPatientResource(String patientId) async {
   return null;
 }
 
+// Function to retrieve FHIR Patient Vitals Resource
+Future<Map<String, dynamic>?> getFhirPatientVitals(String patientId) async {
+  if (bearerToken != null) {
+    try {
+      final response = await http.get(
+        Uri.parse('$fhirApiUrl/Observation?category=vital-signs&patient=$patientId'),
+        headers: {'Authorization': 'Bearer $bearerToken', 'Accept': 'application/fhir+json'},
+      );
+      print('Get FHIR patient vitals resource response status code: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> fhirData = jsonDecode(response.body);
+        print('FHIR patient vitals resource: $fhirData');
+        return fhirData;
+      } else {
+        print('Failed to retrieve FHIR patient vitals resource: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error retrieving FHIR patient vitals resource: $e');
+    }
+  } else {
+    print('Bearer token not available. Cannot make request for FHIR patient vitals resource.');
+  }
+  return null;
+}
+
 // Mapping of observation names from the database to the expected vital names
 const Map<String, String> observationNameMapping = {
   'BODY HEIGHT': 'Height',
