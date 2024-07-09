@@ -29,6 +29,10 @@ class _MyHomePageState extends State<MyHomePage> {
   double _weight = 0;
   double _systolic = 0;
   double _diastolic = 0;
+  DateTime _heightTimestamp = DateTime.now();
+  DateTime _weightTimestamp = DateTime.now();
+  DateTime _systolicTimestamp = DateTime.now();
+  DateTime _diastolicTimestamp = DateTime.now();
   Map<String, dynamic>? _patientData;
   List<Map<String, dynamic>> _vitals = [];
   HealthFactory _health = HealthFactory();
@@ -95,24 +99,32 @@ class _MyHomePageState extends State<MyHomePage> {
 
         double height = 0;
         double weight = 0;
+        DateTime? heightTimestamp;
+        DateTime? weightTimestamp;
 
         for (var data in healthData) {
-          if (data.type == HealthDataType.HEIGHT) {
+          if (data.type == HealthDataType.HEIGHT && (heightTimestamp == null || data.dateFrom.isAfter(heightTimestamp))) {
             height = data.value.toDouble();
-          } else if (data.type == HealthDataType.WEIGHT) {
+            heightTimestamp = data.dateFrom;
+          } else if (data.type == HealthDataType.WEIGHT && (weightTimestamp == null || data.dateFrom.isAfter(weightTimestamp))) {
             weight = data.value.toDouble();
+            weightTimestamp = data.dateFrom;
           }
         }
 
         setState(() {
           _height = height * 3.28084; // converting meters to feet
           _weight = weight * 2.20462; // converting kg to pounds
+          if (heightTimestamp != null) _heightTimestamp = heightTimestamp;
+          if (weightTimestamp != null) _weightTimestamp = weightTimestamp;
         });
 
         print('Height in meters: $height');
         print('Height in feet: $_height');
+        print('Height timestamp: $_heightTimestamp');
         print('Weight in kg: $weight');
         print('Weight in lbs: $_weight');
+        print('Weight timestamp: $_weightTimestamp');
       } catch (error) {
         print("Caught exception in fetchHeightAndWeight: $error");
       }
@@ -137,22 +149,30 @@ class _MyHomePageState extends State<MyHomePage> {
 
         double systolic = 0;
         double diastolic = 0;
+        DateTime? systolicTimestamp;
+        DateTime? diastolicTimestamp;
 
         for (var data in healthData) {
-          if (data.type == HealthDataType.BLOOD_PRESSURE_SYSTOLIC) {
+          if (data.type == HealthDataType.BLOOD_PRESSURE_SYSTOLIC && (systolicTimestamp == null || data.dateFrom.isAfter(systolicTimestamp))) {
             systolic = data.value.toDouble();
-          } else if (data.type == HealthDataType.BLOOD_PRESSURE_DIASTOLIC) {
+            systolicTimestamp = data.dateFrom;
+          } else if (data.type == HealthDataType.BLOOD_PRESSURE_DIASTOLIC && (diastolicTimestamp == null || data.dateFrom.isAfter(diastolicTimestamp))) {
             diastolic = data.value.toDouble();
+            diastolicTimestamp = data.dateFrom;
           }
         }
 
         setState(() {
           _systolic = systolic;
           _diastolic = diastolic;
+          if (systolicTimestamp != null) _systolicTimestamp = systolicTimestamp;
+          if (diastolicTimestamp != null) _diastolicTimestamp = diastolicTimestamp;
         });
 
         print('Systolic: $systolic');
+        print('Systolic timestamp: $_systolicTimestamp');
         print('Diastolic: $diastolic');
+        print('Diastolic timestamp: $_diastolicTimestamp');
       } catch (error) {
         print("Caught exception in fetchBloodPressure: $error");
       }
@@ -228,6 +248,10 @@ class _MyHomePageState extends State<MyHomePage> {
               healthWeight: _weight,
               healthSystolic: _systolic,
               healthDiastolic: _diastolic,
+              heightTimestamp: _heightTimestamp,
+              weightTimestamp: _weightTimestamp,
+              systolicTimestamp: _systolicTimestamp,
+              diastolicTimestamp: _diastolicTimestamp,
             ),
           ),
         );

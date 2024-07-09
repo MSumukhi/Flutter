@@ -9,6 +9,10 @@ class PatientDetailsPage extends StatefulWidget {
   final double healthWeight;
   final double healthSystolic;
   final double healthDiastolic;
+  final DateTime heightTimestamp;
+  final DateTime weightTimestamp;
+  final DateTime systolicTimestamp;
+  final DateTime diastolicTimestamp;
 
   const PatientDetailsPage({
     super.key,
@@ -18,6 +22,10 @@ class PatientDetailsPage extends StatefulWidget {
     required this.healthWeight,
     required this.healthSystolic,
     required this.healthDiastolic,
+    required this.heightTimestamp,
+    required this.weightTimestamp,
+    required this.systolicTimestamp,
+    required this.diastolicTimestamp,
   });
 
   @override
@@ -77,17 +85,17 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
       setState(() {
         _showUpdateButton = true;
         if (widget.healthHeight != webChartHeight) {
-          if (webChartHeightTime == null || webChartHeightTime.isBefore(DateTime.now())) {
+          if (webChartHeightTime == null || webChartHeightTime.isBefore(widget.heightTimestamp)) {
             _updateMessage += 'There is a more recent height value from Health data.\n';
           }
         }
         if (widget.healthWeight != webChartWeight) {
-          if (webChartWeightTime == null || webChartWeightTime.isBefore(DateTime.now())) {
+          if (webChartWeightTime == null || webChartWeightTime.isBefore(widget.weightTimestamp)) {
             _updateMessage += 'There is a more recent weight value from Health data.\n';
           }
         }
         if (widget.healthSystolic != webChartSystolic || widget.healthDiastolic != webChartDiastolic) {
-          if (webChartSystolicTime == null || webChartSystolicTime.isBefore(DateTime.now()) || webChartDiastolicTime == null || webChartDiastolicTime.isBefore(DateTime.now())) {
+          if (webChartSystolicTime == null || webChartSystolicTime.isBefore(widget.systolicTimestamp) || webChartDiastolicTime == null || webChartDiastolicTime.isBefore(widget.diastolicTimestamp)) {
             _updateMessage += 'There is a more recent blood pressure value from Health data.\n';
           }
         }
@@ -121,17 +129,17 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
   }
 
   Future<void> _updateVitals() async {
-    await updateWebChartWithHealthData(widget.patientData['pat_id'], widget.healthHeight, widget.healthWeight, widget.healthSystolic, widget.healthDiastolic);
+    await updateWebChartWithHealthData(widget.patientData['pat_id'], widget.healthHeight, widget.healthWeight, widget.healthSystolic, widget.healthDiastolic, widget.heightTimestamp, widget.weightTimestamp, widget.systolicTimestamp, widget.diastolicTimestamp);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('WebChart updated successfully.')));
 
     // Update the vitals to reflect the changes
     setState(() {
       widget.vitals.firstWhere((vital) => vital['name'] == 'Height')['result'] = widget.healthHeight.toString();
       widget.vitals.firstWhere((vital) => vital['name'] == 'Weight')['result'] = widget.healthWeight.toString();
-      widget.vitals.firstWhere((vital) => vital['name'] == 'Height')['date'] = DateTime.now().toIso8601String();
-      widget.vitals.firstWhere((vital) => vital['name'] == 'Weight')['date'] = DateTime.now().toIso8601String();
+      widget.vitals.firstWhere((vital) => vital['name'] == 'Height')['date'] = widget.heightTimestamp.toIso8601String();
+      widget.vitals.firstWhere((vital) => vital['name'] == 'Weight')['date'] = widget.weightTimestamp.toIso8601String();
       widget.vitals.firstWhere((vital) => vital['name'] == 'Blood Pressure')['result'] = '${widget.healthSystolic}/${widget.healthDiastolic}';
-      widget.vitals.firstWhere((vital) => vital['name'] == 'Blood Pressure')['date'] = DateTime.now().toIso8601String();
+      widget.vitals.firstWhere((vital) => vital['name'] == 'Blood Pressure')['date'] = widget.systolicTimestamp.toIso8601String();
       _showUpdateButton = false;
       _updateMessage = '';
     });
