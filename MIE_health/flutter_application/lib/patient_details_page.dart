@@ -137,6 +137,18 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
     });
   }
 
+  Future<void> _fetchAndDisplayFhirPatientVitals() async {
+    final fhirVitals = await getFhirPatientVitals(widget.patientData['pat_id']);
+    if (fhirVitals != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => FhirPatientPage(fhirData: fhirVitals),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -193,6 +205,10 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
                     child: Text('Update WebChart with Health Data'),
                   ),
                 ],
+                ElevatedButton(
+                  onPressed: _fetchAndDisplayFhirPatientVitals,
+                  child: Text('Fetch FHIR Patient Vitals Resource'),
+                ),
               ],
             ),
           ],
