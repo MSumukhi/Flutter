@@ -107,9 +107,10 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
     try {
       var vital = widget.vitals.firstWhere((vital) => vital['name'] == name);
       if (name == 'Blood Pressure') {
-        return isSystolic
-            ? double.parse(vital['result'].split('/')[0])
-            : double.parse(vital['result'].split('/')[1]);
+        final resultParts = vital['result'].split('/');
+        if (resultParts.length == 2) {
+          return isSystolic ? double.parse(resultParts[0]) : double.parse(resultParts[1]);
+        }
       }
       return double.parse(vital['result']);
     } catch (e) {
@@ -129,7 +130,17 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
   }
 
   Future<void> _updateVitals() async {
-    await updateWebChartWithHealthData(widget.patientData['pat_id'], widget.healthHeight, widget.healthWeight, widget.healthSystolic, widget.healthDiastolic, widget.heightTimestamp, widget.weightTimestamp, widget.systolicTimestamp, widget.diastolicTimestamp);
+    await updateWebChartWithHealthData(
+      widget.patientData['pat_id'],
+      widget.healthHeight,
+      widget.healthWeight,
+      widget.healthSystolic,
+      widget.healthDiastolic,
+      widget.heightTimestamp,
+      widget.weightTimestamp,
+      widget.systolicTimestamp,
+      widget.diastolicTimestamp,
+    );
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('WebChart updated successfully.')));
 
     // Update the vitals to reflect the changes
@@ -138,7 +149,7 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
       widget.vitals.firstWhere((vital) => vital['name'] == 'Weight')['result'] = widget.healthWeight.toString();
       widget.vitals.firstWhere((vital) => vital['name'] == 'Height')['date'] = widget.heightTimestamp.toIso8601String();
       widget.vitals.firstWhere((vital) => vital['name'] == 'Weight')['date'] = widget.weightTimestamp.toIso8601String();
-      widget.vitals.firstWhere((vital) => vital['name'] == 'Blood Pressure')['result'] = '${widget.healthSystolic}/${widget.healthDiastolic}';
+      widget.vitals.firstWhere((vital) => vital['name'] == 'Blood Pressure')['result'] = '${widget.healthSystolic.toStringAsFixed(2)} / ${widget.healthDiastolic.toStringAsFixed(2)}';
       widget.vitals.firstWhere((vital) => vital['name'] == 'Blood Pressure')['date'] = widget.systolicTimestamp.toIso8601String();
       _showUpdateButton = false;
       _updateMessage = '';
@@ -196,8 +207,14 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
               title: Text('Vitals'),
               children: [
                 ...widget.vitals.map((vital) {
+                  final isBloodPressure = vital['name'] == 'Blood Pressure';
+                  final result = isBloodPressure
+                      ? '${widget.healthSystolic.toStringAsFixed(2)} / ${widget.healthDiastolic.toStringAsFixed(2)}'
+                      : vital['result'];
                   return ListTile(
-                    title: Text('${vital['name']}: ${vital['result']} ${vital['units']} (${vital['date']})'),
+                    title: Text(
+                      '${vital['name']}: $result ${vital['units']} (${vital['date']})',
+                    ),
                   );
                 }).toList(),
                 if (_showUpdateButton) ...[
