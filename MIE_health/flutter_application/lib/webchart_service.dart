@@ -57,7 +57,7 @@ Future<Map<String, dynamic>?> getPatientData() async {
 }
 
 // Function to update WebChart with Health Data
-Future<void> updateWebChartWithHealthData(String patientId, double height, double weight, double systolic, double diastolic) async {
+Future<void> updateWebChartWithHealthData(String patientId, double height, double weight, double systolic, double diastolic, DateTime heightTimestamp, DateTime weightTimestamp, DateTime systolicTimestamp, DateTime diastolicTimestamp) async {
   if (bearerToken != null) {
     try {
       final List<Map<String, dynamic>> observations = [
@@ -66,28 +66,28 @@ Future<void> updateWebChartWithHealthData(String patientId, double height, doubl
           'obs_name': 'BODY HEIGHT',
           'obs_result': height.toStringAsFixed(2),
           'obs_units': 'ft',
-          'observed_datetime': DateTime.now().toIso8601String()
+          'observed_datetime': heightTimestamp.toIso8601String()
         },
         {
           'pat_id': patientId,
           'obs_name': 'BODY WEIGHT',
           'obs_result': weight.toStringAsFixed(2),
           'obs_units': 'lbs',
-          'observed_datetime': DateTime.now().toIso8601String()
+          'observed_datetime': weightTimestamp.toIso8601String()
         },
         {
           'pat_id': patientId,
           'obs_name': 'Systolic BP',
           'obs_result': systolic.toStringAsFixed(2),
           'obs_units': 'mmHg',
-          'observed_datetime': DateTime.now().toIso8601String()
+          'observed_datetime': systolicTimestamp.toIso8601String()
         },
         {
           'pat_id': patientId,
           'obs_name': 'Diastolic BP',
           'obs_result': diastolic.toStringAsFixed(2),
           'obs_units': 'mmHg',
-          'observed_datetime': DateTime.now().toIso8601String()
+          'observed_datetime': diastolicTimestamp.toIso8601String()
         }
       ];
 
