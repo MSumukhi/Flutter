@@ -27,22 +27,29 @@ Future<void> authenticateUser(String username, String password) async {
 }
 
 // Function to retrieve specific patient data
-Future<Map<String, dynamic>?> getPatientData() async {
+Future<Map<String, dynamic>?> getPatientData(String patientId) async {
   if (bearerToken != null) {
     try {
-      final String encodedOperation = base64Encode(utf8.encode('GET/db/patients'));
-      final response = await http.get(
-        Uri.parse('$apiUrl/$encodedOperation'),
-        headers: {'Authorization': 'Bearer $bearerToken', 'Accept': 'application/json'},
+      final response = await http.post(
+        Uri.parse('$apiUrl/R0VUL2RiL3BhdGllbnRz'), // Base64 encoded URL for GET/db/patients
+        headers: {
+          'Authorization': 'Bearer $bearerToken',
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: jsonEncode({
+          'options': {
+            'pat_id': patientId
+          }
+        }),
       );
       print('Get patient data response status code: ${response.statusCode}');
       if (response.statusCode == 200) {
         final List<dynamic> patients = jsonDecode(response.body)['db'];
-        final patient = patients.firstWhere((patient) => patient['pat_id'] == '111', orElse: () => null);
-        if (patient != null) {
-          return patient;
+        if (patients.isNotEmpty) {
+          return patients.first;
         } else {
-          print('Patient with ID 111 not found');
+          print('Patient with ID $patientId not found');
         }
       } else {
         print('Failed to retrieve patient data: ${response.statusCode}');
