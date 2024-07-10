@@ -11,6 +11,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+      ),
       home: MyHomePage(),
     );
   }
@@ -200,6 +204,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   },
                   decoration: InputDecoration(
                     labelText: 'Username',
+                    icon: Icon(Icons.person),
                   ),
                 ),
                 TextField(
@@ -209,6 +214,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   obscureText: true,
                   decoration: InputDecoration(
                     labelText: 'Password',
+                    icon: Icon(Icons.lock),
                   ),
                 ),
               ],
@@ -221,7 +227,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 Navigator.of(context).pop();
               },
             ),
-            TextButton(
+            ElevatedButton(
               child: Text('Login'),
               onPressed: () async {
                 Navigator.of(context).pop();
@@ -313,7 +319,15 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: Text('Health Data'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh),
+            onPressed: fetchHealthData,
+          ),
+        ],
+      ),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -337,55 +351,20 @@ class _MyHomePageState extends State<MyHomePage> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Total Steps:',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
+                    ListTile(
+                      leading: Icon(Icons.directions_walk),
+                      title: Text('Total Steps:'),
+                      subtitle: Text('$_steps', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                     ),
-                    Text(
-                      '$_steps',
-                      style: TextStyle(
-                        fontSize: 40,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
+                    ListTile(
+                      leading: Icon(Icons.height),
+                      title: Text('Height:'),
+                      subtitle: Text(_formatHeight(_height), style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                     ),
-                    SizedBox(height: 20),
-                    Text(
-                      'Height:',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    Text(
-                      _formatHeight(_height),
-                      style: TextStyle(
-                        fontSize: 40,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                    SizedBox(height: 20),
-                    Text(
-                      'Weight:',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    Text(
-                      '${_weight.toStringAsFixed(1)} lbs',
-                      style: TextStyle(
-                        fontSize: 40,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
+                    ListTile(
+                      leading: Icon(Icons.fitness_center),
+                      title: Text('Weight:'),
+                      subtitle: Text('${_weight.toStringAsFixed(1)} lbs', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                     ),
                     SizedBox(height: 20),
                     Center(
