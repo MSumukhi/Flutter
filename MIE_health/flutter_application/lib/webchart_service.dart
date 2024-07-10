@@ -27,22 +27,29 @@ Future<void> authenticateUser(String username, String password) async {
 }
 
 // Function to retrieve specific patient data
-Future<Map<String, dynamic>?> getPatientData() async {
+Future<Map<String, dynamic>?> getPatientData(String patientId) async {
   if (bearerToken != null) {
     try {
-      final String encodedOperation = base64Encode(utf8.encode('GET/db/patients'));
-      final response = await http.get(
-        Uri.parse('$apiUrl/$encodedOperation'),
-        headers: {'Authorization': 'Bearer $bearerToken', 'Accept': 'application/json'},
+      final response = await http.post(
+        Uri.parse('$apiUrl/R0VUL2RiL3BhdGllbnRz'), // Base64 encoded URL for GET/db/patients
+        headers: {
+          'Authorization': 'Bearer $bearerToken',
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: jsonEncode({
+          'options': {
+            'pat_id': patientId
+          }
+        }),
       );
       print('Get patient data response status code: ${response.statusCode}');
       if (response.statusCode == 200) {
         final List<dynamic> patients = jsonDecode(response.body)['db'];
-        final patient = patients.firstWhere((patient) => patient['pat_id'] == '111', orElse: () => null);
-        if (patient != null) {
-          return patient;
+        if (patients.isNotEmpty) {
+          return patients.first;
         } else {
-          print('Patient with ID 111 not found');
+          print('Patient with ID $patientId not found');
         }
       } else {
         print('Failed to retrieve patient data: ${response.statusCode}');
@@ -119,14 +126,22 @@ Future<void> updateWebChartWithHealthData(String patientId, double height, doubl
   }
 }
 
-// Function to retrieve latest vitals data
+// Function to retrieve latest vitals data for a specific patient
 Future<List<Map<String, dynamic>>> getVitalsData(String patientId) async {
   if (bearerToken != null) {
     try {
-      final String encodedOperation = base64Encode(utf8.encode('GET/db/observations'));
-      final response = await http.get(
-        Uri.parse('$apiUrl/$encodedOperation'),
-        headers: {'Authorization': 'Bearer $bearerToken', 'Accept': 'application/json'},
+      final response = await http.post(
+        Uri.parse('$apiUrl/R0VUL2RiL29ic2VydmF0aW9ucw=='), // Base64 encoded URL
+        headers: {
+          'Authorization': 'Bearer $bearerToken',
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: jsonEncode({
+          'options': {
+            'pat_id': patientId
+          }
+        }),
       );
       print('Get vitals data response status code: ${response.statusCode}');
       if (response.statusCode == 200) {
@@ -134,7 +149,7 @@ Future<List<Map<String, dynamic>>> getVitalsData(String patientId) async {
 
         // Filter and map observations to vitals
         final List<Map<String, dynamic>> vitals = observations
-            .where((obs) => obs['pat_id'] == patientId && observationNameMapping.containsKey(obs['obs_name']))
+            .where((obs) => observationNameMapping.containsKey(obs['obs_name']))
             .map((obs) => {
                   'name': observationNameMapping[obs['obs_name']],
                   'result': obs['obs_result'],
