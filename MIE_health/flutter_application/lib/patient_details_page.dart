@@ -173,12 +173,21 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Patient Details and Vitals'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.home),
+            onPressed: () {
+              Navigator.of(context).popUntil((route) => route.isFirst);
+            },
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
             ExpansionTile(
+              leading: Icon(Icons.person),
               title: Text('Patient Details'),
               children: [
                 ListTile(title: Text('ID: ${widget.patientData['pat_id']}')),
@@ -204,6 +213,7 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
               ],
             ),
             ExpansionTile(
+              leading: Icon(Icons.favorite),
               title: Text('Vitals'),
               children: [
                 ...widget.vitals.map((vital) {
