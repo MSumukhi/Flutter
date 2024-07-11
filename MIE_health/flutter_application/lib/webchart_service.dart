@@ -3,7 +3,6 @@ import 'package:http/http.dart' as http;
 
 String? bearerToken;
 final String apiUrl = 'https://sumukhi.webch.art/webchart.cgi/json';
-final String fhirApiUrl = 'https://sumukhi.webch.art/webchart.cgi/fhir';
 
 // Function to authenticate user and obtain bearer token
 Future<void> authenticateUser(String username, String password) async {
@@ -27,29 +26,22 @@ Future<void> authenticateUser(String username, String password) async {
 }
 
 // Function to retrieve specific patient data
-Future<Map<String, dynamic>?> getPatientData(String patientId) async {
+Future<Map<String, dynamic>?> getPatientData() async {
   if (bearerToken != null) {
     try {
-      final response = await http.post(
-        Uri.parse('$apiUrl/R0VUL2RiL3BhdGllbnRz'), // Base64 encoded URL for GET/db/patients
-        headers: {
-          'Authorization': 'Bearer $bearerToken',
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: jsonEncode({
-          'options': {
-            'pat_id': patientId
-          }
-        }),
+      final String encodedOperation = base64Encode(utf8.encode('GET/db/patients'));
+      final response = await http.get(
+        Uri.parse('$apiUrl/$encodedOperation'),
+        headers: {'Authorization': 'Bearer $bearerToken', 'Accept': 'application/json'},
       );
       print('Get patient data response status code: ${response.statusCode}');
       if (response.statusCode == 200) {
         final List<dynamic> patients = jsonDecode(response.body)['db'];
-        if (patients.isNotEmpty) {
-          return patients.first;
+        final patient = patients.firstWhere((patient) => patient['pat_id'] == '111', orElse: () => null);
+        if (patient != null) {
+          return patient;
         } else {
-          print('Patient with ID $patientId not found');
+          print('Patient with ID 111 not found');
         }
       } else {
         print('Failed to retrieve patient data: ${response.statusCode}');
@@ -64,37 +56,23 @@ Future<Map<String, dynamic>?> getPatientData(String patientId) async {
 }
 
 // Function to update WebChart with Health Data
-Future<void> updateWebChartWithHealthData(String patientId, double height, double weight, double systolic, double diastolic, DateTime heightTimestamp, DateTime weightTimestamp, DateTime systolicTimestamp, DateTime diastolicTimestamp) async {
+Future<void> updateWebChartWithHealthData(String patientId, double height, double weight) async {
   if (bearerToken != null) {
     try {
       final List<Map<String, dynamic>> observations = [
         {
           'pat_id': patientId,
-          'obs_name': 'BODY HEIGHT',
+          'loinc_code': '8302-2', // Height LOINC code
           'obs_result': height.toStringAsFixed(2),
           'obs_units': 'ft',
-          'observed_datetime': heightTimestamp.toIso8601String()
+          'observed_datetime': DateTime.now().toIso8601String()
         },
         {
           'pat_id': patientId,
-          'obs_name': 'BODY WEIGHT',
+          'loinc_code': '29463-7', // Weight LOINC code
           'obs_result': weight.toStringAsFixed(2),
           'obs_units': 'lbs',
-          'observed_datetime': weightTimestamp.toIso8601String()
-        },
-        {
-          'pat_id': patientId,
-          'obs_name': 'Systolic BP',
-          'obs_result': systolic.toStringAsFixed(2),
-          'obs_units': 'mmHg',
-          'observed_datetime': systolicTimestamp.toIso8601String()
-        },
-        {
-          'pat_id': patientId,
-          'obs_name': 'Diastolic BP',
-          'obs_result': diastolic.toStringAsFixed(2),
-          'obs_units': 'mmHg',
-          'observed_datetime': diastolicTimestamp.toIso8601String()
+          'observed_datetime': DateTime.now().toIso8601String()
         }
       ];
 
@@ -126,47 +104,70 @@ Future<void> updateWebChartWithHealthData(String patientId, double height, doubl
   }
 }
 
-// Function to retrieve latest vitals data for a specific patient
+// Function to retrieve latest vitals data
 Future<List<Map<String, dynamic>>> getVitalsData(String patientId) async {
   if (bearerToken != null) {
     try {
-      final response = await http.post(
-        Uri.parse('$apiUrl/R0VUL2RiL29ic2VydmF0aW9ucw=='), // Base64 encoded URL
-        headers: {
-          'Authorization': 'Bearer $bearerToken',
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: jsonEncode({
-          'options': {
-            'pat_id': patientId
-          }
-        }),
+      final String encodedOperation = base64Encode(utf8.encode('GET/db/observations'));
+      final response = await http.get(
+        Uri.parse('$apiUrl/$encodedOperation'),
+        headers: {'Authorization': 'Bearer $bearerToken', 'Accept': 'application/json'},
       );
       print('Get vitals data response status code: ${response.statusCode}');
       if (response.statusCode == 200) {
         final List<dynamic> observations = jsonDecode(response.body)['db'];
 
-        // Filter and map observations to vitals
+        // Log the raw observations data
+        print('Raw observations data: $observations');
+
+        String systolicBP = '';
+        String diastolicBP = '';
+        String bpDate = '';
+
+        // Filter and map observations to vitals using observation names
         final List<Map<String, dynamic>> vitals = observations
-            .where((obs) => observationNameMapping.containsKey(obs['obs_name']))
-            .map((obs) => {
-                  'name': observationNameMapping[obs['obs_name']],
-                  'result': obs['obs_result'],
-                  'date': obs['observed_datetime'],
-                  'units': obs['obs_units'] ?? ''
-                })
+            .where((obs) => obs['pat_id'] == patientId && observationNameMapping.containsKey(obs['obs_name']))
+            .map((obs) {
+              if (obs['obs_name'] == 'WEBCHART-Systolic BP') {
+                systolicBP = obs['obs_result'];
+                bpDate = obs['observed_datetime'];
+              } else if (obs['obs_name'] == 'WEBCHART-Diastolic BP') {
+                diastolicBP = obs['obs_result'];
+                bpDate = obs['observed_datetime'];
+              }
+              return {
+                'loinc_code': observationNameMapping[obs['obs_name']],
+                'name': obs['obs_name'],
+                'result': obs['obs_result'],
+                'date': obs['observed_datetime'],
+                'units': obs['obs_units'] ?? ''
+              };
+            })
             .toList();
+
+        // Combine systolic and diastolic blood pressure into one entry if both are available
+        if (systolicBP.isNotEmpty && diastolicBP.isNotEmpty) {
+          vitals.add({
+            'loinc_code': '8480-6/8462-4',
+            'name': 'Blood Pressure',
+            'result': '$systolicBP / $diastolicBP',
+            'date': bpDate,
+            'units': 'mmHg'
+          });
+        }
+
+        // Log mapped vitals data
+        print('Mapped vitals data: $vitals');
 
         // Ensure all vitals are present, set to zero if not found
         final Map<String, Map<String, dynamic>> latestVitals = {};
         for (var vital in vitals) {
-          if (!latestVitals.containsKey(vital['name']) || DateTime.parse(latestVitals[vital['name']]!['date']).isBefore(DateTime.parse(vital['date']))) {
-            latestVitals[vital['name']] = vital;
+          if (!latestVitals.containsKey(vital['loinc_code']) || DateTime.parse(latestVitals[vital['loinc_code']]!['date']).isBefore(DateTime.parse(vital['date']))) {
+            latestVitals[vital['loinc_code']] = vital;
           }
         }
         final allVitals = _getDefaultVitals().map((defaultVital) {
-          return latestVitals[defaultVital['name']] ?? defaultVital;
+          return latestVitals[defaultVital['loinc_code']] ?? defaultVital;
         }).toList();
 
         print('Retrieved vitals: $allVitals');
@@ -184,82 +185,46 @@ Future<List<Map<String, dynamic>>> getVitalsData(String patientId) async {
   return [];
 }
 
-// Function to retrieve FHIR Patient Resource
-Future<Map<String, dynamic>?> getFhirPatientResource(String patientId) async {
-  if (bearerToken != null) {
-    try {
-      final response = await http.get(
-        Uri.parse('$fhirApiUrl/Patient/$patientId'),
-        headers: {'Authorization': 'Bearer $bearerToken', 'Accept': 'application/fhir+json'},
-      );
-      print('Get FHIR patient resource response status code: ${response.statusCode}');
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> fhirData = jsonDecode(response.body);
-        print('FHIR patient resource: $fhirData');
-        return fhirData;
-      } else {
-        print('Failed to retrieve FHIR patient resource: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Error retrieving FHIR patient resource: $e');
-    }
-  } else {
-    print('Bearer token not available. Cannot make request for FHIR patient resource.');
-  }
-  return null;
-}
-
-// Function to retrieve FHIR Patient Vitals Resource
-Future<Map<String, dynamic>?> getFhirPatientVitals(String patientId) async {
-  if (bearerToken != null) {
-    try {
-      final response = await http.get(
-        Uri.parse('$fhirApiUrl/Observation?category=vital-signs&patient=$patientId'),
-        headers: {'Authorization': 'Bearer $bearerToken', 'Accept': 'application/fhir+json'},
-      );
-      print('Get FHIR patient vitals resource response status code: ${response.statusCode}');
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> fhirData = jsonDecode(response.body);
-        print('FHIR patient vitals resource: $fhirData');
-        return fhirData;
-      } else {
-        print('Failed to retrieve FHIR patient vitals resource: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Error retrieving FHIR patient vitals resource: $e');
-    }
-  } else {
-    print('Bearer token not available. Cannot make request for FHIR patient vitals resource.');
-  }
-  return null;
-}
-
-// Mapping of observation names from the database to the expected vital names
+// Mapping of observation names to LOINC codes
 const Map<String, String> observationNameMapping = {
-  'BODY HEIGHT': 'Height',
-  'BODY WEIGHT': 'Weight',
-  'BODY TEMPERATURE': 'Temp',
-  'HEART RATE': 'Pulse',
-  'RESPIRATION RATE': 'Resp',
-  'BMI': 'BMI',
-  'Systolic BP': 'Blood Pressure',
-  'Diastolic BP': 'Blood Pressure',
-  'O2 Sat': 'O2 Sat',
-  'Head Circ': 'Head Circ',
-  'Waist Circ': 'Waist Circ'
+  'BODY HEIGHT': '8302-2',
+  'BODY WEIGHT': '29463-7',
+  'BMI': '39156-5',
+  'WEBCHART-Systolic BP': '8480-6',
+  'WEBCHART-Diastolic BP': '8462-4',
+  'Pulse': '8867-4',
+  'BODY TEMPERATURE': '8310-5',
+  'RESPIRATION RATE': '9279-1',
+  'O2 Sat': '2708-6',
+  'Head Circ': '8287-5',
+  'Waist Circ': '56115-9'
+};
+
+// Mapping of LOINC codes to the expected vital names
+const Map<String, String> observationLoincMapping = {
+  '8302-2': 'Height',
+  '29463-7': 'Weight',
+  '39156-5': 'BMI',
+  '8480-6/8462-4': 'Blood Pressure',
+  '8867-4': 'Pulse',
+  '8310-5': 'Temp',
+  '9279-1': 'Resp',
+  '2708-6': 'O2 Sat',
+  '8287-5': 'Head Circ',
+  '56115-9': 'Waist Circ' // assuming this is the LOINC for waist circumference
 };
 
 List<Map<String, dynamic>> _getDefaultVitals() {
   return [
-    {'name': 'Height', 'result': '0', 'units': 'ft', 'date': ''},
-    {'name': 'Weight', 'result': '0', 'units': 'lbs', 'date': ''},
-    {'name': 'BMI', 'result': '0', 'units': '', 'date': ''},
-    {'name': 'Blood Pressure', 'result': '0/0', 'units': 'mmHg', 'date': ''},
-    {'name': 'Pulse', 'result': '0', 'units': '', 'date': ''},
-    {'name': 'Temp', 'result': '0', 'units': '', 'date': ''},
-    {'name': 'Resp', 'result': '0', 'units': '', 'date': ''},
-    {'name': 'O2 Sat', 'result': '0', 'units': '', 'date': ''},
-    {'name': 'Head Circ', 'result': '0', 'units': '', 'date': ''},
-    {'name': 'Waist Circ', 'result': '0', 'units': '', 'date': ''},
+    {'loinc_code': '8302-2', 'name': 'Height', 'result': '0', 'units': 'ft', 'date': ''},
+    {'loinc_code': '29463-7', 'name': 'Weight', 'result': '0', 'units': 'lbs', 'date': ''},
+    {'loinc_code': '39156-5', 'name': 'BMI', 'result': '0', 'units': '', 'date': ''},
+    {'loinc_code': '8480-6/8462-4', 'name': 'Blood Pressure', 'result': '0/0', 'units': 'mmHg', 'date': ''},
+    {'loinc_code': '8867-4', 'name': 'Pulse', 'result': '0', 'units': '', 'date': ''},
+    {'loinc_code': '8310-5', 'name': 'Temp', 'result': '0', 'units': '', 'date': ''},
+    {'loinc_code': '9279-1', 'name': 'Resp', 'result': '0', 'units': '', 'date': ''},
+    {'loinc_code': '2708-6', 'name': 'O2 Sat', 'result': '0', 'units': '', 'date': ''},
+    {'loinc_code': '8287-5', 'name': 'Head Circ', 'result': '0', 'units': '', 'date': ''},
+    {'loinc_code': '56115-9', 'name': 'Waist Circ', 'result': '0', 'units': '', 'date': ''},
   ];
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:health/health.dart';
-import 'webchart_service.dart';
-import 'patient_details_page.dart';
+import 'webchart_service.dart'; // Import the webchart_service.dart
+import 'patient_details_page.dart'; // Import the new patient_details_page.dart
 
 void main() => runApp(MyApp());
 
@@ -11,10 +11,6 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
       home: MyHomePage(),
     );
   }
@@ -31,12 +27,6 @@ class _MyHomePageState extends State<MyHomePage> {
   int _steps = 0;
   double _height = 0;
   double _weight = 0;
-  double _systolic = 0;
-  double _diastolic = 0;
-  DateTime _heightTimestamp = DateTime.now();
-  DateTime _weightTimestamp = DateTime.now();
-  DateTime _systolicTimestamp = DateTime.now();
-  DateTime _diastolicTimestamp = DateTime.now();
   Map<String, dynamic>? _patientData;
   List<Map<String, dynamic>> _vitals = [];
   HealthFactory _health = HealthFactory();
@@ -50,7 +40,6 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> fetchHealthData() async {
     await fetchSteps();
     await fetchHeightAndWeight();
-    await fetchBloodPressure();
     setState(() {});
   }
 
@@ -103,82 +92,26 @@ class _MyHomePageState extends State<MyHomePage> {
 
         double height = 0;
         double weight = 0;
-        DateTime? heightTimestamp;
-        DateTime? weightTimestamp;
 
         for (var data in healthData) {
-          if (data.type == HealthDataType.HEIGHT && (heightTimestamp == null || data.dateFrom.isAfter(heightTimestamp))) {
+          if (data.type == HealthDataType.HEIGHT) {
             height = data.value.toDouble();
-            heightTimestamp = data.dateFrom;
-          } else if (data.type == HealthDataType.WEIGHT && (weightTimestamp == null || data.dateFrom.isAfter(weightTimestamp))) {
+          } else if (data.type == HealthDataType.WEIGHT) {
             weight = data.value.toDouble();
-            weightTimestamp = data.dateFrom;
           }
         }
 
         setState(() {
           _height = height * 3.28084; // converting meters to feet
           _weight = weight * 2.20462; // converting kg to pounds
-          if (heightTimestamp != null) _heightTimestamp = heightTimestamp;
-          if (weightTimestamp != null) _weightTimestamp = weightTimestamp;
         });
 
         print('Height in meters: $height');
         print('Height in feet: $_height');
-        print('Height timestamp: $_heightTimestamp');
         print('Weight in kg: $weight');
         print('Weight in lbs: $_weight');
-        print('Weight timestamp: $_weightTimestamp');
       } catch (error) {
         print("Caught exception in fetchHeightAndWeight: $error");
-      }
-    } else {
-      print("Authorization not granted - error in authorization");
-    }
-  }
-
-  Future<void> fetchBloodPressure() async {
-    var types = [
-      HealthDataType.BLOOD_PRESSURE_SYSTOLIC,
-      HealthDataType.BLOOD_PRESSURE_DIASTOLIC,
-    ];
-
-    final now = DateTime.now();
-    final startDate = now.subtract(Duration(days: 365 * 2));
-
-    bool requested = await _health.requestAuthorization(types);
-    if (requested) {
-      try {
-        List<HealthDataPoint> healthData = await _health.getHealthDataFromTypes(startDate, now, types);
-
-        double systolic = 0;
-        double diastolic = 0;
-        DateTime? systolicTimestamp;
-        DateTime? diastolicTimestamp;
-
-        for (var data in healthData) {
-          if (data.type == HealthDataType.BLOOD_PRESSURE_SYSTOLIC && (systolicTimestamp == null || data.dateFrom.isAfter(systolicTimestamp))) {
-            systolic = data.value.toDouble();
-            systolicTimestamp = data.dateFrom;
-          } else if (data.type == HealthDataType.BLOOD_PRESSURE_DIASTOLIC && (diastolicTimestamp == null || data.dateFrom.isAfter(diastolicTimestamp))) {
-            diastolic = data.value.toDouble();
-            diastolicTimestamp = data.dateFrom;
-          }
-        }
-
-        setState(() {
-          _systolic = systolic;
-          _diastolic = diastolic;
-          if (systolicTimestamp != null) _systolicTimestamp = systolicTimestamp;
-          if (diastolicTimestamp != null) _diastolicTimestamp = diastolicTimestamp;
-        });
-
-        print('Systolic: $systolic');
-        print('Systolic timestamp: $_systolicTimestamp');
-        print('Diastolic: $diastolic');
-        print('Diastolic timestamp: $_diastolicTimestamp');
-      } catch (error) {
-        print("Caught exception in fetchBloodPressure: $error");
       }
     } else {
       print("Authorization not granted - error in authorization");
@@ -204,7 +137,6 @@ class _MyHomePageState extends State<MyHomePage> {
                   },
                   decoration: InputDecoration(
                     labelText: 'Username',
-                    icon: Icon(Icons.person),
                   ),
                 ),
                 TextField(
@@ -214,7 +146,6 @@ class _MyHomePageState extends State<MyHomePage> {
                   obscureText: true,
                   decoration: InputDecoration(
                     labelText: 'Password',
-                    icon: Icon(Icons.lock),
                   ),
                 ),
               ],
@@ -227,7 +158,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 Navigator.of(context).pop();
               },
             ),
-            ElevatedButton(
+            TextButton(
               child: Text('Login'),
               onPressed: () async {
                 Navigator.of(context).pop();
@@ -252,12 +183,6 @@ class _MyHomePageState extends State<MyHomePage> {
               vitals: _vitals,
               healthHeight: _height,
               healthWeight: _weight,
-              healthSystolic: _systolic,
-              healthDiastolic: _diastolic,
-              heightTimestamp: _heightTimestamp,
-              weightTimestamp: _weightTimestamp,
-              systolicTimestamp: _systolicTimestamp,
-              diastolicTimestamp: _diastolicTimestamp,
             ),
           ),
         );
@@ -266,45 +191,41 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> fetchWebChartData(String username, String password) async {
-  try {
-    await authenticateUser(username, password);
+    try {
+      await authenticateUser(username, password);
+      final patientData = await getPatientData();
+      if (patientData == null || !patientData.containsKey('pat_id')) {
+        print('No valid patient data found');
+        setState(() {
+          _vitals = _getDefaultVitals();
+        });
+        return;
+      }
 
-    // Provide the patient ID directly
-    final String patientId = '111'; // Replace with the actual patient ID or obtain it dynamically
+      print('Fetched patient data: $patientData');
 
-    final patientData = await getPatientData(patientId);
-    if (patientData == null || !patientData.containsKey('pat_id')) {
-      print('No valid patient data found');
+      // Fetch WebChart vitals
+      final webChartVitals = await getVitalsData(patientData['pat_id']);
+      print('Fetched webchart vitals: $webChartVitals');
+
+      setState(() {
+        _patientData = patientData;
+        _vitals = webChartVitals.isNotEmpty ? webChartVitals : _getDefaultVitals();
+      });
+    } catch (e) {
+      print('Error fetching WebChart data: $e');
       setState(() {
         _vitals = _getDefaultVitals();
       });
-      return;
     }
-
-    print('Fetched patient data: $patientData');
-
-    // Fetch WebChart vitals
-    final webChartVitals = await getVitalsData(patientData['pat_id']);
-    print('Fetched webchart vitals: $webChartVitals');
-
-    setState(() {
-      _patientData = patientData;
-      _vitals = webChartVitals.isNotEmpty ? webChartVitals : _getDefaultVitals();
-    });
-  } catch (e) {
-    print('Error fetching WebChart data: $e');
-    setState(() {
-      _vitals = _getDefaultVitals();
-    });
   }
-}
 
   List<Map<String, dynamic>> _getDefaultVitals() {
     return [
       {'name': 'Height', 'result': '0', 'units': 'ft', 'date': ''},
       {'name': 'Weight', 'result': '0', 'units': 'lbs', 'date': ''},
       {'name': 'BMI', 'result': '0', 'units': '', 'date': ''},
-      {'name': 'Blood Pressure', 'result': '0/0', 'units': 'mmHg', 'date': ''},
+      {'name': 'Blood Pressure', 'result': '0/0', 'units': '', 'date': ''},
       {'name': 'Pulse', 'result': '0', 'units': '', 'date': ''},
       {'name': 'Temp', 'result': '0', 'units': '', 'date': ''},
       {'name': 'Resp', 'result': '0', 'units': '', 'date': ''},
@@ -323,15 +244,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Health Data'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: fetchHealthData,
-          ),
-        ],
-      ),
+      backgroundColor: Colors.white,
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -355,20 +268,55 @@ class _MyHomePageState extends State<MyHomePage> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ListTile(
-                      leading: Icon(Icons.directions_walk),
-                      title: Text('Total Steps:'),
-                      subtitle: Text('$_steps', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                    Text(
+                      'Total Steps:',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
                     ),
-                    ListTile(
-                      leading: Icon(Icons.height),
-                      title: Text('Height:'),
-                      subtitle: Text(_formatHeight(_height), style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                    Text(
+                      '$_steps',
+                      style: TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
                     ),
-                    ListTile(
-                      leading: Icon(Icons.fitness_center),
-                      title: Text('Weight:'),
-                      subtitle: Text('${_weight.toStringAsFixed(1)} lbs', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                    SizedBox(height: 20),
+                    Text(
+                      'Height:',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    Text(
+                      _formatHeight(_height),
+                      style: TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    Text(
+                      'Weight:',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    Text(
+                      '${_weight.toStringAsFixed(1)} lbs',
+                      style: TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
                     ),
                     SizedBox(height: 20),
                     Center(
