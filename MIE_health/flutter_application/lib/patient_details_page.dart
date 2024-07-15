@@ -47,39 +47,19 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
     double webChartWeight = _getVitalResult('29463-7', 0.0); // Weight LOINC code
     double webChartSystolic = _getVitalResult('8480-6', 0.0); // Systolic BP LOINC code
     double webChartDiastolic = _getVitalResult('8462-4', 0.0); // Diastolic BP LOINC code
-    DateTime? webChartHeightTime;
-    DateTime? webChartWeightTime;
-    DateTime? webChartSystolicTime;
-    DateTime? webChartDiastolicTime;
+    DateTime? webChartHeightTime = _getVitalTimestamp('8302-2'); // Height LOINC code
+    DateTime? webChartWeightTime = _getVitalTimestamp('29463-7'); // Weight LOINC code
+    DateTime? webChartSystolicTime = _getVitalTimestamp('8480-6'); // Systolic BP LOINC code
+    DateTime? webChartDiastolicTime = _getVitalTimestamp('8462-4'); // Diastolic BP LOINC code
 
-    String heightDateStr = _getVitalDate('8302-2'); // Height LOINC code
-    String weightDateStr = _getVitalDate('29463-7'); // Weight LOINC code
-    String systolicDateStr = _getVitalDate('8480-6'); // Systolic BP LOINC code
-    String diastolicDateStr = _getVitalDate('8462-4'); // Diastolic BP LOINC code
-
-    try {
-      webChartHeightTime = heightDateStr.isNotEmpty ? DateTime.parse(heightDateStr) : null;
-    } catch (e) {
-      print('Error parsing height date: $e');
-    }
-
-    try {
-      webChartWeightTime = weightDateStr.isNotEmpty ? DateTime.parse(weightDateStr) : null;
-    } catch (e) {
-      print('Error parsing weight date: $e');
-    }
-
-    try {
-      webChartSystolicTime = systolicDateStr.isNotEmpty ? DateTime.parse(systolicDateStr) : null;
-    } catch (e) {
-      print('Error parsing systolic date: $e');
-    }
-
-    try {
-      webChartDiastolicTime = diastolicDateStr.isNotEmpty ? DateTime.parse(diastolicDateStr) : null;
-    } catch (e) {
-      print('Error parsing diastolic date: $e');
-    }
+    // Debug statements to check values and timestamps
+    print('Comparing Vitals:');
+    print('Health Height: ${widget.healthHeight}, WebChart Height: $webChartHeight');
+    print('Health Weight: ${widget.healthWeight}, WebChart Weight: $webChartWeight');
+    print('Health Systolic: ${widget.healthSystolic}, WebChart Systolic: $webChartSystolic');
+    print('Health Diastolic: ${widget.healthDiastolic}, WebChart Diastolic: $webChartDiastolic');
+    print('Health Systolic Timestamp: ${widget.systolicTimestamp}, WebChart Systolic Timestamp: $webChartSystolicTime');
+    print('Health Diastolic Timestamp: ${widget.diastolicTimestamp}, WebChart Diastolic Timestamp: $webChartDiastolicTime');
 
     if (widget.healthHeight != webChartHeight || widget.healthWeight != webChartWeight || widget.healthSystolic != webChartSystolic || widget.healthDiastolic != webChartDiastolic) {
       setState(() {
@@ -105,7 +85,12 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
 
   double _getVitalResult(String loincCode, double defaultValue) {
     try {
-      var vital = widget.vitals.firstWhere((vital) => vital['loinc_code'] == loincCode);
+      var vital = widget.vitals.firstWhere(
+          (vital) => vital['loinc_num'] == loincCode,
+          orElse: () {
+            print('Vital with LOINC code $loincCode not found, returning default value $defaultValue');
+            return {'result': defaultValue.toString()};
+          });
       return double.parse(vital['result']);
     } catch (e) {
       print('Error getting $loincCode result: $e');
@@ -113,13 +98,18 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
     }
   }
 
-  String _getVitalDate(String loincCode) {
+  DateTime? _getVitalTimestamp(String loincCode) {
     try {
-      var vital = widget.vitals.firstWhere((vital) => vital['loinc_code'] == loincCode);
-      return vital['date'];
+      var vital = widget.vitals.firstWhere(
+          (vital) => vital['loinc_num'] == loincCode,
+          orElse: () {
+            print('Vital with LOINC code $loincCode not found, returning empty date');
+            return {'date': ''};
+          });
+      return vital['date'].isNotEmpty ? DateTime.parse(vital['date']) : null;
     } catch (e) {
       print('Error getting $loincCode date: $e');
-      return '';
+      return null;
     }
   }
 
@@ -139,14 +129,18 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
 
     // Update the vitals to reflect the changes
     setState(() {
-      widget.vitals.firstWhere((vital) => vital['loinc_code'] == '8302-2')['result'] = widget.healthHeight.toString(); // Height LOINC code
-      widget.vitals.firstWhere((vital) => vital['loinc_code'] == '29463-7')['result'] = widget.healthWeight.toString(); // Weight LOINC code
-      widget.vitals.firstWhere((vital) => vital['loinc_code'] == '8302-2')['date'] = widget.heightTimestamp.toIso8601String(); // Height LOINC code
-      widget.vitals.firstWhere((vital) => vital['loinc_code'] == '29463-7')['date'] = widget.weightTimestamp.toIso8601String(); // Weight LOINC code
-      widget.vitals.firstWhere((vital) => vital['loinc_code'] == '8480-6')['result'] = widget.healthSystolic.toStringAsFixed(2); // Systolic BP LOINC code
-      widget.vitals.firstWhere((vital) => vital['loinc_code'] == '8462-4')['result'] = widget.healthDiastolic.toStringAsFixed(2); // Diastolic BP LOINC code
-      widget.vitals.firstWhere((vital) => vital['loinc_code'] == '8480-6')['date'] = widget.systolicTimestamp.toIso8601String(); // Systolic BP LOINC code
-      widget.vitals.firstWhere((vital) => vital['loinc_code'] == '8462-4')['date'] = widget.diastolicTimestamp.toIso8601String(); // Diastolic BP LOINC code
+      try {
+        widget.vitals.firstWhere((vital) => vital['loinc_num'] == '8302-2')['result'] = widget.healthHeight.toString(); // Height LOINC code
+        widget.vitals.firstWhere((vital) => vital['loinc_num'] == '29463-7')['result'] = widget.healthWeight.toString(); // Weight LOINC code
+        widget.vitals.firstWhere((vital) => vital['loinc_num'] == '8302-2')['date'] = widget.heightTimestamp.toIso8601String(); // Height LOINC code
+        widget.vitals.firstWhere((vital) => vital['loinc_num'] == '29463-7')['date'] = widget.weightTimestamp.toIso8601String(); // Weight LOINC code
+        widget.vitals.firstWhere((vital) => vital['loinc_num'] == '8480-6')['result'] = widget.healthSystolic.toStringAsFixed(2); // Systolic BP LOINC code
+        widget.vitals.firstWhere((vital) => vital['loinc_num'] == '8462-4')['result'] = widget.healthDiastolic.toStringAsFixed(2); // Diastolic BP LOINC code
+        widget.vitals.firstWhere((vital) => vital['loinc_num'] == '8480-6')['date'] = widget.systolicTimestamp.toIso8601String(); // Systolic BP LOINC code
+        widget.vitals.firstWhere((vital) => vital['loinc_num'] == '8462-4')['date'] = widget.diastolicTimestamp.toIso8601String(); // Diastolic BP LOINC code
+      } catch (e) {
+        print('Error updating vitals: $e');
+      }
       _showUpdateButton = false;
       _updateMessage = '';
     });
@@ -217,9 +211,12 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
                   final result = isBloodPressure
                       ? '${widget.healthSystolic.toStringAsFixed(2)} / ${widget.healthDiastolic.toStringAsFixed(2)}'
                       : vital['result'];
+                  final timestamp = isBloodPressure
+                      ? widget.systolicTimestamp.toIso8601String()
+                      : vital['date'];
                   return ListTile(
                     title: Text(
-                      '${vital['name']}: $result ${vital['units']} (${vital['date']})',
+                      '${vital['name']}: $result ${vital['units']} (${timestamp})',
                     ),
                   );
                 }).toList(),
