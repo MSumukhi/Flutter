@@ -70,28 +70,28 @@ Future<void> updateWebChartWithHealthData(String patientId, double height, doubl
       final List<Map<String, dynamic>> observations = [
         {
           'pat_id': patientId,
-          'obs_name': 'BODY HEIGHT',
+          'loinc_code': '8302-2', // Height LOINC code
           'obs_result': height.toStringAsFixed(2),
           'obs_units': 'ft',
           'observed_datetime': heightTimestamp.toIso8601String()
         },
         {
           'pat_id': patientId,
-          'obs_name': 'BODY WEIGHT',
+          'loinc_code': '29463-7', // Weight LOINC code
           'obs_result': weight.toStringAsFixed(2),
           'obs_units': 'lbs',
           'observed_datetime': weightTimestamp.toIso8601String()
         },
         {
           'pat_id': patientId,
-          'obs_name': 'Systolic BP',
+          'loinc_code': '8480-6', // Systolic BP LOINC code
           'obs_result': systolic.toStringAsFixed(2),
           'obs_units': 'mmHg',
           'observed_datetime': systolicTimestamp.toIso8601String()
         },
         {
           'pat_id': patientId,
-          'obs_name': 'Diastolic BP',
+          'loinc_code': '8462-4', // Diastolic BP LOINC code
           'obs_result': diastolic.toStringAsFixed(2),
           'obs_units': 'mmHg',
           'observed_datetime': diastolicTimestamp.toIso8601String()
@@ -151,7 +151,8 @@ Future<List<Map<String, dynamic>>> getVitalsData(String patientId) async {
         final List<Map<String, dynamic>> vitals = observations
             .where((obs) => observationNameMapping.containsKey(obs['obs_name']))
             .map((obs) => {
-                  'name': observationNameMapping[obs['obs_name']],
+                  'loinc_code': observationNameMapping[obs['obs_name']],
+                  'name': observationLoincMapping[observationNameMapping[obs['obs_name']]],
                   'result': obs['obs_result'],
                   'date': obs['observed_datetime'],
                   'units': obs['obs_units'] ?? ''
@@ -161,12 +162,12 @@ Future<List<Map<String, dynamic>>> getVitalsData(String patientId) async {
         // Ensure all vitals are present, set to zero if not found
         final Map<String, Map<String, dynamic>> latestVitals = {};
         for (var vital in vitals) {
-          if (!latestVitals.containsKey(vital['name']) || DateTime.parse(latestVitals[vital['name']]!['date']).isBefore(DateTime.parse(vital['date']))) {
-            latestVitals[vital['name']] = vital;
+          if (!latestVitals.containsKey(vital['loinc_code']) || DateTime.parse(latestVitals[vital['loinc_code']]!['date']).isBefore(DateTime.parse(vital['date']))) {
+            latestVitals[vital['loinc_code']] = vital;
           }
         }
         final allVitals = _getDefaultVitals().map((defaultVital) {
-          return latestVitals[defaultVital['name']] ?? defaultVital;
+          return latestVitals[defaultVital['loinc_code']] ?? defaultVital;
         }).toList();
 
         print('Retrieved vitals: $allVitals');
@@ -234,32 +235,46 @@ Future<Map<String, dynamic>?> getFhirPatientVitals(String patientId) async {
   return null;
 }
 
-// Mapping of observation names from the database to the expected vital names
+// Mapping of observation names to LOINC codes
 const Map<String, String> observationNameMapping = {
-  'BODY HEIGHT': 'Height',
-  'BODY WEIGHT': 'Weight',
-  'BODY TEMPERATURE': 'Temp',
-  'HEART RATE': 'Pulse',
-  'RESPIRATION RATE': 'Resp',
-  'BMI': 'BMI',
-  'Systolic BP': 'Blood Pressure',
-  'Diastolic BP': 'Blood Pressure',
-  'O2 Sat': 'O2 Sat',
-  'Head Circ': 'Head Circ',
-  'Waist Circ': 'Waist Circ'
+  'BODY HEIGHT': '8302-2',
+  'BODY WEIGHT': '29463-7',
+  'BMI': '39156-5',
+  'Systolic BP': '8480-6',
+  'Diastolic BP': '8462-4',
+  'Pulse': '8867-4',
+  'BODY TEMPERATURE': '8310-5',
+  'RESPIRATION RATE': '9279-1',
+  'O2 Sat': '2708-6',
+  'Head Circ': '8287-5',
+  'Waist Circ': '56115-9'
+};
+
+// Mapping of LOINC codes to the expected vital names
+const Map<String, String> observationLoincMapping = {
+  '8302-2': 'Height',
+  '29463-7': 'Weight',
+  '39156-5': 'BMI',
+  '8480-6/8462-4': 'Blood Pressure',
+  '8867-4': 'Pulse',
+  '8310-5': 'Temp',
+  '9279-1': 'Resp',
+  '2708-6': 'O2 Sat',
+  '8287-5': 'Head Circ',
+  '56115-9': 'Waist Circ'
 };
 
 List<Map<String, dynamic>> _getDefaultVitals() {
   return [
-    {'name': 'Height', 'result': '0', 'units': 'ft', 'date': ''},
-    {'name': 'Weight', 'result': '0', 'units': 'lbs', 'date': ''},
-    {'name': 'BMI', 'result': '0', 'units': '', 'date': ''},
-    {'name': 'Blood Pressure', 'result': '0/0', 'units': 'mmHg', 'date': ''},
-    {'name': 'Pulse', 'result': '0', 'units': '', 'date': ''},
-    {'name': 'Temp', 'result': '0', 'units': '', 'date': ''},
-    {'name': 'Resp', 'result': '0', 'units': '', 'date': ''},
-    {'name': 'O2 Sat', 'result': '0', 'units': '', 'date': ''},
-    {'name': 'Head Circ', 'result': '0', 'units': '', 'date': ''},
-    {'name': 'Waist Circ', 'result': '0', 'units': '', 'date': ''},
+    {'loinc_code': '8302-2', 'name': 'Height', 'result': '0', 'units': 'ft', 'date': ''},
+    {'loinc_code': '29463-7', 'name': 'Weight', 'result': '0', 'units': 'lbs', 'date': ''},
+    {'loinc_code': '39156-5', 'name': 'BMI', 'result': '0', 'units': '', 'date': ''},
+    {'loinc_code': '8480-6/8462-4', 'name': 'Blood Pressure', 'result': '0/0', 'units': 'mmHg', 'date': ''},
+    {'loinc_code': '8867-4', 'name': 'Pulse', 'result': '0', 'units': '', 'date': ''},
+    {'loinc_code': '8310-5', 'name': 'Temp', 'result': '0', 'units': '', 'date': ''},
+    {'loinc_code': '9279-1', 'name': 'Resp', 'result': '0', 'units': '', 'date': ''},
+    {'loinc_code': '2708-6', 'name': 'O2 Sat', 'result': '0', 'units': '', 'date': ''},
+    {'loinc_code': '8287-5', 'name': 'Head Circ', 'result': '0', 'units': '', 'date': ''},
+    {'loinc_code': '56115-9', 'name': 'Waist Circ', 'result': '0', 'units': '', 'date': ''},
   ];
 }

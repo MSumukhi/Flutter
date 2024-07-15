@@ -43,19 +43,19 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
   }
 
   void _compareVitals() {
-    double webChartHeight = _getVitalResult('Height', 0.0);
-    double webChartWeight = _getVitalResult('Weight', 0.0);
-    double webChartSystolic = _getVitalResult('Blood Pressure', 0.0, isSystolic: true);
-    double webChartDiastolic = _getVitalResult('Blood Pressure', 0.0, isSystolic: false);
+    double webChartHeight = _getVitalResult('8302-2', 0.0); // Height LOINC code
+    double webChartWeight = _getVitalResult('29463-7', 0.0); // Weight LOINC code
+    double webChartSystolic = _getVitalResult('8480-6', 0.0); // Systolic BP LOINC code
+    double webChartDiastolic = _getVitalResult('8462-4', 0.0); // Diastolic BP LOINC code
     DateTime? webChartHeightTime;
     DateTime? webChartWeightTime;
     DateTime? webChartSystolicTime;
     DateTime? webChartDiastolicTime;
 
-    String heightDateStr = _getVitalDate('Height');
-    String weightDateStr = _getVitalDate('Weight');
-    String systolicDateStr = _getVitalDate('Blood Pressure', isSystolic: true);
-    String diastolicDateStr = _getVitalDate('Blood Pressure', isSystolic: false);
+    String heightDateStr = _getVitalDate('8302-2'); // Height LOINC code
+    String weightDateStr = _getVitalDate('29463-7'); // Weight LOINC code
+    String systolicDateStr = _getVitalDate('8480-6'); // Systolic BP LOINC code
+    String diastolicDateStr = _getVitalDate('8462-4'); // Diastolic BP LOINC code
 
     try {
       webChartHeightTime = heightDateStr.isNotEmpty ? DateTime.parse(heightDateStr) : null;
@@ -103,28 +103,22 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
     }
   }
 
-  double _getVitalResult(String name, double defaultValue, {bool isSystolic = true}) {
+  double _getVitalResult(String loincCode, double defaultValue) {
     try {
-      var vital = widget.vitals.firstWhere((vital) => vital['name'] == name);
-      if (name == 'Blood Pressure') {
-        final resultParts = vital['result'].split('/');
-        if (resultParts.length == 2) {
-          return isSystolic ? double.parse(resultParts[0]) : double.parse(resultParts[1]);
-        }
-      }
+      var vital = widget.vitals.firstWhere((vital) => vital['loinc_code'] == loincCode);
       return double.parse(vital['result']);
     } catch (e) {
-      print('Error getting $name result: $e');
+      print('Error getting $loincCode result: $e');
       return defaultValue;
     }
   }
 
-  String _getVitalDate(String name, {bool isSystolic = true}) {
+  String _getVitalDate(String loincCode) {
     try {
-      var vital = widget.vitals.firstWhere((vital) => vital['name'] == name);
+      var vital = widget.vitals.firstWhere((vital) => vital['loinc_code'] == loincCode);
       return vital['date'];
     } catch (e) {
-      print('Error getting $name date: $e');
+      print('Error getting $loincCode date: $e');
       return '';
     }
   }
@@ -145,12 +139,14 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
 
     // Update the vitals to reflect the changes
     setState(() {
-      widget.vitals.firstWhere((vital) => vital['name'] == 'Height')['result'] = widget.healthHeight.toString();
-      widget.vitals.firstWhere((vital) => vital['name'] == 'Weight')['result'] = widget.healthWeight.toString();
-      widget.vitals.firstWhere((vital) => vital['name'] == 'Height')['date'] = widget.heightTimestamp.toIso8601String();
-      widget.vitals.firstWhere((vital) => vital['name'] == 'Weight')['date'] = widget.weightTimestamp.toIso8601String();
-      widget.vitals.firstWhere((vital) => vital['name'] == 'Blood Pressure')['result'] = '${widget.healthSystolic.toStringAsFixed(2)} / ${widget.healthDiastolic.toStringAsFixed(2)}';
-      widget.vitals.firstWhere((vital) => vital['name'] == 'Blood Pressure')['date'] = widget.systolicTimestamp.toIso8601String();
+      widget.vitals.firstWhere((vital) => vital['loinc_code'] == '8302-2')['result'] = widget.healthHeight.toString(); // Height LOINC code
+      widget.vitals.firstWhere((vital) => vital['loinc_code'] == '29463-7')['result'] = widget.healthWeight.toString(); // Weight LOINC code
+      widget.vitals.firstWhere((vital) => vital['loinc_code'] == '8302-2')['date'] = widget.heightTimestamp.toIso8601String(); // Height LOINC code
+      widget.vitals.firstWhere((vital) => vital['loinc_code'] == '29463-7')['date'] = widget.weightTimestamp.toIso8601String(); // Weight LOINC code
+      widget.vitals.firstWhere((vital) => vital['loinc_code'] == '8480-6')['result'] = widget.healthSystolic.toStringAsFixed(2); // Systolic BP LOINC code
+      widget.vitals.firstWhere((vital) => vital['loinc_code'] == '8462-4')['result'] = widget.healthDiastolic.toStringAsFixed(2); // Diastolic BP LOINC code
+      widget.vitals.firstWhere((vital) => vital['loinc_code'] == '8480-6')['date'] = widget.systolicTimestamp.toIso8601String(); // Systolic BP LOINC code
+      widget.vitals.firstWhere((vital) => vital['loinc_code'] == '8462-4')['date'] = widget.diastolicTimestamp.toIso8601String(); // Diastolic BP LOINC code
       _showUpdateButton = false;
       _updateMessage = '';
     });
