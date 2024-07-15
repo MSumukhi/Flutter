@@ -266,38 +266,38 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> fetchWebChartData(String username, String password) async {
-  try {
-    await authenticateUser(username, password);
+    try {
+      await authenticateUser(username, password);
 
-    // Provide the patient ID directly
-    final String patientId = '111'; // Replace with the actual patient ID or obtain it dynamically
+      // Provide the patient ID directly
+      final String patientId = '111'; // Replace with the actual patient ID or obtain it dynamically
 
-    final patientData = await getPatientData(patientId);
-    if (patientData == null || !patientData.containsKey('pat_id')) {
-      print('No valid patient data found');
+      final patientData = await getPatientData(patientId);
+      if (patientData == null || !patientData.containsKey('pat_id')) {
+        print('No valid patient data found');
+        setState(() {
+          _vitals = _getDefaultVitals();
+        });
+        return;
+      }
+
+      print('Fetched patient data: $patientData');
+
+      // Fetch WebChart vitals
+      final webChartVitals = await getVitalsData(patientData['pat_id']);
+      print('Fetched webchart vitals: $webChartVitals');
+
+      setState(() {
+        _patientData = patientData;
+        _vitals = webChartVitals.isNotEmpty ? webChartVitals : _getDefaultVitals();
+      });
+    } catch (e) {
+      print('Error fetching WebChart data: $e');
       setState(() {
         _vitals = _getDefaultVitals();
       });
-      return;
     }
-
-    print('Fetched patient data: $patientData');
-
-    // Fetch WebChart vitals
-    final webChartVitals = await getVitalsData(patientData['pat_id']);
-    print('Fetched webchart vitals: $webChartVitals');
-
-    setState(() {
-      _patientData = patientData;
-      _vitals = webChartVitals.isNotEmpty ? webChartVitals : _getDefaultVitals();
-    });
-  } catch (e) {
-    print('Error fetching WebChart data: $e');
-    setState(() {
-      _vitals = _getDefaultVitals();
-    });
   }
-}
 
   List<Map<String, dynamic>> _getDefaultVitals() {
     return [
