@@ -60,6 +60,8 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
     print('Health Diastolic: ${widget.healthDiastolic}, WebChart Diastolic: $webChartDiastolic');
     print('Health Systolic Timestamp: ${widget.systolicTimestamp}, WebChart Systolic Timestamp: $webChartSystolicTime');
     print('Health Diastolic Timestamp: ${widget.diastolicTimestamp}, WebChart Diastolic Timestamp: $webChartDiastolicTime');
+    print('Health Height Timestamp: ${widget.heightTimestamp}, WebChart Height Timestamp: $webChartHeightTime');
+    print('Health Weight Timestamp: ${widget.weightTimestamp}, WebChart Weight Timestamp: $webChartWeightTime');
 
     if (widget.healthHeight != webChartHeight || widget.healthWeight != webChartWeight || widget.healthSystolic != webChartSystolic || widget.healthDiastolic != webChartDiastolic) {
       setState(() {

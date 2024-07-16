@@ -117,7 +117,7 @@ class _MyHomePageState extends State<MyHomePage> {
         }
 
         setState(() {
-          _height = height * 3.28084; // converting meters to feet
+          _height = metersToFeet(height); // Correcting the height conversion
           _weight = weight * 2.20462; // converting kg to pounds
           if (heightTimestamp != null) _heightTimestamp = heightTimestamp;
           if (weightTimestamp != null) _weightTimestamp = weightTimestamp;
@@ -386,4 +386,8 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
     );
   }
+}
+
+double metersToFeet(double meters) {
+  return meters * 3.28084; // Converts meters to feet
 }
