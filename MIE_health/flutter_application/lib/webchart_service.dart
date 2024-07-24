@@ -290,6 +290,6 @@ List<Map<String, dynamic>> _getDefaultVitals() {
     {'loinc_num': '9279-1', 'name': 'Resp', 'result': '0', 'units': '', 'date': ''},
     {'loinc_num': '2708-6', 'name': 'O2 Sat', 'result': '0', 'units': '', 'date': ''},
     {'loinc_num': '8287-5', 'name': 'Head Circ', 'result': '0', 'units': '', 'date': ''},
-    {'loinc_num': '56115-9', 'name': 'Waist Circ', 'result': '0', 'units': '', 'date': ''},
+    {'loinc_num': '56115-9', 'name': 'Waist Circ', 'result': '0', 'units': '', 'date': ''}
   ];
 }

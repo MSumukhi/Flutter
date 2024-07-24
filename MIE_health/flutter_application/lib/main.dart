@@ -101,32 +101,32 @@ class _MyHomePageState extends State<MyHomePage> {
       try {
         List<HealthDataPoint> healthData = await _health.getHealthDataFromTypes(startDate, now, types);
 
-        double height = 0;
-        double weight = 0;
+        double heightInMeters = 0;
+        double weightInKg = 0;
         DateTime? heightTimestamp;
         DateTime? weightTimestamp;
 
         for (var data in healthData) {
           if (data.type == HealthDataType.HEIGHT && (heightTimestamp == null || data.dateFrom.isAfter(heightTimestamp))) {
-            height = data.value.toDouble();
+            heightInMeters = data.value.toDouble();
             heightTimestamp = data.dateFrom;
           } else if (data.type == HealthDataType.WEIGHT && (weightTimestamp == null || data.dateFrom.isAfter(weightTimestamp))) {
-            weight = data.value.toDouble();
+            weightInKg = data.value.toDouble();
             weightTimestamp = data.dateFrom;
           }
         }
 
         setState(() {
-          _height = height * 3.28084; // converting meters to feet
-          _weight = weight * 2.20462; // converting kg to pounds
+          _height = metersToFeet(heightInMeters);
+          _weight = weightInKg * 2.20462; // converting kg to pounds
           if (heightTimestamp != null) _heightTimestamp = heightTimestamp;
           if (weightTimestamp != null) _weightTimestamp = weightTimestamp;
         });
 
-        print('Height in meters: $height');
-        print('Height in feet: $_height');
+        print('Height retrieved from Health app in meters: $heightInMeters');
+        print('Height retrieved from Health app in feet: $_height');
         print('Height timestamp: $_heightTimestamp');
-        print('Weight in kg: $weight');
+        print('Weight in kg: $weightInKg');
         print('Weight in lbs: $_weight');
         print('Weight timestamp: $_weightTimestamp');
       } catch (error) {
@@ -291,6 +291,8 @@ class _MyHomePageState extends State<MyHomePage> {
         _patientData = patientData;
         _vitals = webChartVitals.isNotEmpty ? webChartVitals : _getDefaultVitals();
       });
+
+      print('Height retrieved from WebChart: ${_vitals.firstWhere((vital) => vital['loinc_num'] == '8302-2', orElse: () => {'result': '0'})['result']} ft');
     } catch (e) {
       print('Error fetching WebChart data: $e');
       setState(() {
@@ -386,4 +388,8 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
     );
   }
+}
+
+double metersToFeet(double meters) {
+  return meters * 3.28084; // Converts meters to feet
 }
