@@ -7,11 +7,11 @@ class PatientDetailsPage extends StatefulWidget {
   final Map<String, dynamic> patientData;
   final List<Map<String, dynamic>> vitals;
   double healthHeight;
-  final double healthWeight;
+  double healthWeight;
   final double healthSystolic;
   final double healthDiastolic;
   DateTime heightTimestamp;
-  final DateTime weightTimestamp;
+  DateTime weightTimestamp;
   final DateTime systolicTimestamp;
   final DateTime diastolicTimestamp;
 
@@ -45,37 +45,49 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
   }
 
   void _compareVitals() {
-    double webChartHeight = _getVitalResult('8302-2', 0.0);
-    double webChartWeight = _getVitalResult('29463-7', 0.0);
-    double webChartSystolic = _getVitalResult('8480-6', 0.0);
-    double webChartDiastolic = _getVitalResult('8462-4', 0.0);
     DateTime? webChartHeightTime = _getVitalTimestamp('8302-2');
     DateTime? webChartWeightTime = _getVitalTimestamp('29463-7');
-    DateTime? webChartSystolicTime = _getVitalTimestamp('8480-6');
-    DateTime? webChartDiastolicTime = _getVitalTimestamp('8462-4');
 
     print('Comparing WebChart and Health app data:');
-    print('WebChart Height: $webChartHeight ft');
     print('WebChart Height Timestamp: $webChartHeightTime');
-    print('Health App Height: ${widget.healthHeight} ft');
     print('Health App Height Timestamp: ${widget.heightTimestamp}');
+    print('WebChart Weight Timestamp: $webChartWeightTime');
+    print('Health App Weight Timestamp: ${widget.weightTimestamp}');
 
-    bool shouldUpdateWebChart = false;
-    bool shouldUpdateHealth = false;
+    bool shouldUpdateWebChartHeight = false;
+    bool shouldUpdateHealthHeight = false;
+    bool shouldUpdateWebChartWeight = false;
+    bool shouldUpdateHealthWeight = false;
 
     if (webChartHeightTime != null && webChartHeightTime.isAfter(widget.heightTimestamp)) {
-      shouldUpdateHealth = true;
+      shouldUpdateHealthHeight = true;
     }
 
     if (widget.heightTimestamp.isAfter(webChartHeightTime ?? DateTime(0))) {
-      shouldUpdateWebChart = true;
+      shouldUpdateWebChartHeight = true;
     }
 
-    if (shouldUpdateWebChart || shouldUpdateHealth) {
+    if (webChartWeightTime != null && webChartWeightTime.isAfter(widget.weightTimestamp)) {
+      shouldUpdateHealthWeight = true;
+    }
+
+    if (widget.weightTimestamp.isAfter(webChartWeightTime ?? DateTime(0))) {
+      shouldUpdateWebChartWeight = true;
+    }
+
+    if (shouldUpdateWebChartHeight || shouldUpdateHealthHeight || shouldUpdateWebChartWeight || shouldUpdateHealthWeight) {
       setState(() {
-        _updateMessage = shouldUpdateHealth
-            ? 'There is a more recent height value in WebChart data.'
-            : 'There is a more recent height value in Health data.';
+        _updateMessage = '';
+        if (shouldUpdateHealthHeight) {
+          _updateMessage += 'There is a more recent height value in WebChart data.\n';
+        } else if (shouldUpdateWebChartHeight) {
+          _updateMessage += 'There is a more recent height value in Health data.\n';
+        }
+        if (shouldUpdateHealthWeight) {
+          _updateMessage += 'There is a more recent weight value in WebChart data.\n';
+        } else if (shouldUpdateWebChartWeight) {
+          _updateMessage += 'There is a more recent weight value in Health data.\n';
+        }
       });
     } else {
       setState(() {
@@ -84,8 +96,8 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
     }
 
     setState(() {
-      _showUpdateButton = true;
-      _showHealthUpdateButton = true;
+      _showUpdateButton = shouldUpdateWebChartHeight || shouldUpdateWebChartWeight;
+      _showHealthUpdateButton = shouldUpdateHealthHeight || shouldUpdateHealthWeight;
     });
   }
 
@@ -152,17 +164,36 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
   }
 
   Future<void> _updateHealthHeight() async {
-    double webChartHeight = _getVitalResult('8302-2', widget.healthHeight);
     DateTime? webChartHeightTime = _getVitalTimestamp('8302-2');
 
     if (webChartHeightTime != null && webChartHeightTime.isAfter(widget.heightTimestamp)) {
-      widget.healthHeight = webChartHeight;
+      widget.healthHeight = _getVitalResult('8302-2', widget.healthHeight);
       widget.heightTimestamp = webChartHeightTime;
     }
 
     bool success = await updateHealthHeight(
       widget.healthHeight,
       widget.heightTimestamp,
+    );
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Health data updated successfully.')));
+      setState(() {
+        _showHealthUpdateButton = false;
+      });
+    }
+  }
+
+  Future<void> _updateHealthWeight() async {
+    DateTime? webChartWeightTime = _getVitalTimestamp('29463-7');
+
+    if (webChartWeightTime != null && webChartWeightTime.isAfter(widget.weightTimestamp)) {
+      widget.healthWeight = _getVitalResult('29463-7', widget.healthWeight);
+      widget.weightTimestamp = webChartWeightTime;
+    }
+
+    bool success = await updateHealthWeight(
+      widget.healthWeight,
+      widget.weightTimestamp,
     );
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Health data updated successfully.')));
@@ -259,11 +290,16 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
                       onPressed: _updateVitals,
                       child: Text('Update WebChart with Health Data'),
                     ),
-                  if (_showHealthUpdateButton)
+                  if (_showHealthUpdateButton) ...[
                     ElevatedButton(
                       onPressed: _updateHealthHeight,
-                      child: Text('Update Health with WebChart Data'),
+                      child: Text('Update Health Height with WebChart Data'),
                     ),
+                    ElevatedButton(
+                      onPressed: _updateHealthWeight,
+                      child: Text('Update Health Weight with WebChart Data'),
+                    ),
+                  ],
                 ],
                 ElevatedButton(
                   onPressed: _fetchAndDisplayFhirPatientVitals,
