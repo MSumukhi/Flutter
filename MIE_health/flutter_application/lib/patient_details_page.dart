@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'webchart_service.dart'; 
-import 'fhir_patient_page.dart'; 
-import 'update_health_service.dart'; // Import the update_health_service.dart
+import 'webchart_service.dart';
+import 'fhir_patient_page.dart';
+import 'update_health_service.dart';
 
 class PatientDetailsPage extends StatefulWidget {
   final Map<String, dynamic> patientData;
@@ -45,35 +45,51 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
   }
 
   void _compareVitals() {
-    double webChartHeight = _getVitalResult('8302-2', 0.0); 
-    double webChartWeight = _getVitalResult('29463-7', 0.0); 
-    double webChartSystolic = _getVitalResult('8480-6', 0.0); 
-    double webChartDiastolic = _getVitalResult('8462-4', 0.0); 
-    DateTime? webChartHeightTime = _getVitalTimestamp('8302-2'); 
-    DateTime? webChartWeightTime = _getVitalTimestamp('29463-7'); 
-    DateTime? webChartSystolicTime = _getVitalTimestamp('8480-6'); 
-    DateTime? webChartDiastolicTime = _getVitalTimestamp('8462-4'); 
+    double webChartHeight = _getVitalResult('8302-2', 0.0);
+    double webChartWeight = _getVitalResult('29463-7', 0.0);
+    double webChartSystolic = _getVitalResult('8480-6', 0.0);
+    double webChartDiastolic = _getVitalResult('8462-4', 0.0);
+    DateTime? webChartHeightTime = _getVitalTimestamp('8302-2');
+    DateTime? webChartWeightTime = _getVitalTimestamp('29463-7');
+    DateTime? webChartSystolicTime = _getVitalTimestamp('8480-6');
+    DateTime? webChartDiastolicTime = _getVitalTimestamp('8462-4');
 
-    if (widget.healthHeight != webChartHeight || widget.healthWeight != webChartWeight || widget.healthSystolic != webChartSystolic || widget.healthDiastolic != webChartDiastolic) {
+    print('Comparing WebChart and Health app data:');
+    print('WebChart Height: $webChartHeight ft');
+    print('Health App Height: ${widget.healthHeight} ft');
+
+    if (widget.healthHeight != webChartHeight ||
+        widget.healthWeight != webChartWeight ||
+        widget.healthSystolic != webChartSystolic ||
+        widget.healthDiastolic != webChartDiastolic) {
       setState(() {
         _showUpdateButton = true;
         if (widget.healthHeight != webChartHeight) {
-          if (webChartHeightTime == null || webChartHeightTime.isBefore(widget.heightTimestamp)) {
-            _updateMessage += 'There is a more recent height value from Health data.\n';
+          if (webChartHeightTime == null ||
+              webChartHeightTime.isBefore(widget.heightTimestamp)) {
+            _updateMessage +=
+                'There is a more recent height value from Health data.\n';
           } else {
             _showHealthUpdateButton = true;
           }
         }
         if (widget.healthWeight != webChartWeight) {
-          if (webChartWeightTime == null || webChartWeightTime.isBefore(widget.weightTimestamp)) {
-            _updateMessage += 'There is a more recent weight value from Health data.\n';
+          if (webChartWeightTime == null ||
+              webChartWeightTime.isBefore(widget.weightTimestamp)) {
+            _updateMessage +=
+                'There is a more recent weight value from Health data.\n';
           } else {
             _showHealthUpdateButton = true;
           }
         }
-        if (widget.healthSystolic != webChartSystolic || widget.healthDiastolic != webChartDiastolic) {
-          if (webChartSystolicTime == null || webChartSystolicTime.isBefore(widget.systolicTimestamp) || webChartDiastolicTime == null || webChartDiastolicTime.isBefore(widget.diastolicTimestamp)) {
-            _updateMessage += 'There is a more recent blood pressure value from Health data.\n';
+        if (widget.healthSystolic != webChartSystolic ||
+            widget.healthDiastolic != webChartDiastolic) {
+          if (webChartSystolicTime == null ||
+              webChartSystolicTime.isBefore(widget.systolicTimestamp) ||
+              webChartDiastolicTime == null ||
+              webChartDiastolicTime.isBefore(widget.diastolicTimestamp)) {
+            _updateMessage +=
+                'There is a more recent blood pressure value from Health data.\n';
           } else {
             _showHealthUpdateButton = true;
           }
@@ -87,7 +103,8 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
       var vital = widget.vitals.firstWhere(
           (vital) => vital['loinc_num'] == loincCode,
           orElse: () {
-            print('Vital with LOINC code $loincCode not found, returning default value $defaultValue');
+            print(
+                'Vital with LOINC code $loincCode not found, returning default value $defaultValue');
             return {'result': defaultValue.toString()};
           });
       return double.parse(vital['result']);
@@ -102,7 +119,8 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
       var vital = widget.vitals.firstWhere(
           (vital) => vital['loinc_num'] == loincCode,
           orElse: () {
-            print('Vital with LOINC code $loincCode not found, returning empty date');
+            print(
+                'Vital with LOINC code $loincCode not found, returning empty date');
             return {'date': ''};
           });
       return vital['date'].isNotEmpty ? DateTime.parse(vital['date']) : null;
@@ -124,18 +142,35 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
       widget.systolicTimestamp,
       widget.diastolicTimestamp,
     );
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('WebChart updated successfully.')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('WebChart updated successfully.')));
 
     setState(() {
       try {
-        widget.vitals.firstWhere((vital) => vital['loinc_num'] == '8302-2')['result'] = widget.healthHeight.toString(); 
-        widget.vitals.firstWhere((vital) => vital['loinc_num'] == '29463-7')['result'] = widget.healthWeight.toString(); 
-        widget.vitals.firstWhere((vital) => vital['loinc_num'] == '8302-2')['date'] = widget.heightTimestamp.toIso8601String(); 
-        widget.vitals.firstWhere((vital) => vital['loinc_num'] == '29463-7')['date'] = widget.weightTimestamp.toIso8601String(); 
-        widget.vitals.firstWhere((vital) => vital['loinc_num'] == '8480-6')['result'] = widget.healthSystolic.toStringAsFixed(2); 
-        widget.vitals.firstWhere((vital) => vital['loinc_num'] == '8462-4')['result'] = widget.healthDiastolic.toStringAsFixed(2); 
-        widget.vitals.firstWhere((vital) => vital['loinc_num'] == '8480-6')['date'] = widget.systolicTimestamp.toIso8601String(); 
-        widget.vitals.firstWhere((vital) => vital['loinc_num'] == '8462-4')['date'] = widget.diastolicTimestamp.toIso8601String(); 
+        widget.vitals
+            .firstWhere((vital) => vital['loinc_num'] == '8302-2')['result'] =
+            widget.healthHeight.toString();
+        widget.vitals
+            .firstWhere((vital) => vital['loinc_num'] == '29463-7')['result'] =
+            widget.healthWeight.toString();
+        widget.vitals
+            .firstWhere((vital) => vital['loinc_num'] == '8302-2')['date'] =
+            widget.heightTimestamp.toIso8601String();
+        widget.vitals
+            .firstWhere((vital) => vital['loinc_num'] == '29463-7')['date'] =
+            widget.weightTimestamp.toIso8601String();
+        widget.vitals
+            .firstWhere((vital) => vital['loinc_num'] == '8480-6')['result'] =
+            widget.healthSystolic.toStringAsFixed(2);
+        widget.vitals
+            .firstWhere((vital) => vital['loinc_num'] == '8462-4')['result'] =
+            widget.healthDiastolic.toStringAsFixed(2);
+        widget.vitals
+            .firstWhere((vital) => vital['loinc_num'] == '8480-6')['date'] =
+            widget.systolicTimestamp.toIso8601String();
+        widget.vitals
+            .firstWhere((vital) => vital['loinc_num'] == '8462-4')['date'] =
+            widget.diastolicTimestamp.toIso8601String();
       } catch (e) {
         print('Error updating vitals: $e');
       }
@@ -145,15 +180,17 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
   }
 
   Future<void> _updateHealthHeight() async {
+    double webChartHeight = _getVitalResult('8302-2', 0.0);
+    DateTime? webChartHeightTime = _getVitalTimestamp('8302-2');
+
     bool success = await updateHealthHeight(
-      _getVitalResult('8302-2', widget.healthHeight),
-      _getVitalTimestamp('8302-2') ?? DateTime.now(),
+      webChartHeight,
+      webChartHeightTime ?? widget.heightTimestamp,
     );
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Health data updated successfully.')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Health data updated successfully.')));
       setState(() {
-        widget.healthHeight = _getVitalResult('8302-2', widget.healthHeight);
-        widget.heightTimestamp = _getVitalTimestamp('8302-2') ?? DateTime.now();
         _showHealthUpdateButton = false;
       });
     }

@@ -1,17 +1,17 @@
-// update_health_service.dart
 import 'package:health/health.dart';
 
 HealthFactory _health = HealthFactory();
 
-Future<bool> updateHealthHeight(double heightInInches, DateTime timestamp) async {
-  double heightInFeet = inchesToFeet(heightInInches);
+Future<bool> updateHealthHeight(double heightInFeet, DateTime timestamp) async {
+  double heightInMeters = feetToMeters(heightInFeet);
+  print('Height being updated to Health app (in meters): $heightInMeters');
   var types = [HealthDataType.HEIGHT];
   var permissions = [HealthDataAccess.WRITE];
 
   bool requested = await _health.requestAuthorization(types, permissions: permissions);
   if (requested) {
     try {
-      bool success = await _health.writeHealthData(heightInFeet, HealthDataType.HEIGHT, timestamp, timestamp);
+      bool success = await _health.writeHealthData(heightInMeters, HealthDataType.HEIGHT, timestamp, timestamp);
       if (success) {
         print('Successfully updated health height data.');
         return true;
@@ -29,6 +29,6 @@ Future<bool> updateHealthHeight(double heightInInches, DateTime timestamp) async
   }
 }
 
-double inchesToFeet(double inches) {
-  return inches / 12.0;
+double feetToMeters(double feet) {
+  return feet * 0.3048;
 }
