@@ -7,11 +7,11 @@ class PatientDetailsPage extends StatefulWidget {
   final Map<String, dynamic> patientData;
   final List<Map<String, dynamic>> vitals;
   double healthHeight;
-  final double healthWeight;
+  double healthWeight;
   final double healthSystolic;
   final double healthDiastolic;
   DateTime heightTimestamp;
-  final DateTime weightTimestamp;
+  DateTime weightTimestamp;
   final DateTime systolicTimestamp;
   final DateTime diastolicTimestamp;
 
@@ -34,7 +34,7 @@ class PatientDetailsPage extends StatefulWidget {
 }
 
 class _PatientDetailsPageState extends State<PatientDetailsPage> {
-  bool _showUpdateButton = false;
+  bool _showWebChartUpdateButton = false;
   bool _showHealthUpdateButton = false;
   String _updateMessage = '';
 
@@ -45,47 +45,51 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
   }
 
   void _compareVitals() {
-    double webChartHeight = _getVitalResult('8302-2', 0.0);
-    double webChartWeight = _getVitalResult('29463-7', 0.0);
-    double webChartSystolic = _getVitalResult('8480-6', 0.0);
-    double webChartDiastolic = _getVitalResult('8462-4', 0.0);
     DateTime? webChartHeightTime = _getVitalTimestamp('8302-2');
     DateTime? webChartWeightTime = _getVitalTimestamp('29463-7');
-    DateTime? webChartSystolicTime = _getVitalTimestamp('8480-6');
-    DateTime? webChartDiastolicTime = _getVitalTimestamp('8462-4');
 
     print('Comparing WebChart and Health app data:');
-    print('WebChart Height: $webChartHeight ft');
     print('WebChart Height Timestamp: $webChartHeightTime');
-    print('Health App Height: ${widget.healthHeight} ft');
     print('Health App Height Timestamp: ${widget.heightTimestamp}');
+    print('WebChart Weight Timestamp: $webChartWeightTime');
+    print('Health App Weight Timestamp: ${widget.weightTimestamp}');
 
-    bool shouldUpdateWebChart = false;
-    bool shouldUpdateHealth = false;
+    bool shouldUpdateWebChartHeight = false;
+    bool shouldUpdateHealthHeight = false;
+    bool shouldUpdateWebChartWeight = false;
+    bool shouldUpdateHealthWeight = false;
 
     if (webChartHeightTime != null && webChartHeightTime.isAfter(widget.heightTimestamp)) {
-      shouldUpdateHealth = true;
+      shouldUpdateHealthHeight = true;
     }
 
     if (widget.heightTimestamp.isAfter(webChartHeightTime ?? DateTime(0))) {
-      shouldUpdateWebChart = true;
+      shouldUpdateWebChartHeight = true;
     }
 
-    if (shouldUpdateWebChart || shouldUpdateHealth) {
-      setState(() {
-        _updateMessage = shouldUpdateHealth
-            ? 'There is a more recent height value in WebChart data.'
-            : 'There is a more recent height value in Health data.';
-      });
-    } else {
-      setState(() {
-        _updateMessage = '';
-      });
+    if (webChartWeightTime != null && webChartWeightTime.isAfter(widget.weightTimestamp)) {
+      shouldUpdateHealthWeight = true;
+    }
+
+    if (widget.weightTimestamp.isAfter(webChartWeightTime ?? DateTime(0))) {
+      shouldUpdateWebChartWeight = true;
     }
 
     setState(() {
-      _showUpdateButton = true;
-      _showHealthUpdateButton = true;
+      _showWebChartUpdateButton = shouldUpdateWebChartHeight || shouldUpdateWebChartWeight;
+      _showHealthUpdateButton = shouldUpdateHealthHeight || shouldUpdateHealthWeight;
+      _updateMessage = '';
+
+      if (shouldUpdateHealthHeight) {
+        _updateMessage += 'There is a more recent height value in WebChart data.\n';
+      } else if (shouldUpdateWebChartHeight) {
+        _updateMessage += 'There is a more recent height value in Health data.\n';
+      }
+      if (shouldUpdateHealthWeight) {
+        _updateMessage += 'There is a more recent weight value in WebChart data.\n';
+      } else if (shouldUpdateWebChartWeight) {
+        _updateMessage += 'There is a more recent weight value in Health data.\n';
+      }
     });
   }
 
@@ -146,30 +150,32 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
       } catch (e) {
         print('Error updating vitals: $e');
       }
-      _showUpdateButton = false;
+      _showWebChartUpdateButton = false;
       _updateMessage = '';
     });
   }
 
-  Future<void> _updateHealthHeight() async {
-    double webChartHeight = _getVitalResult('8302-2', widget.healthHeight);
+  Future<void> _updateHealthData() async {
     DateTime? webChartHeightTime = _getVitalTimestamp('8302-2');
+    DateTime? webChartWeightTime = _getVitalTimestamp('29463-7');
 
     if (webChartHeightTime != null && webChartHeightTime.isAfter(widget.heightTimestamp)) {
-      widget.healthHeight = webChartHeight;
+      widget.healthHeight = _getVitalResult('8302-2', widget.healthHeight);
       widget.heightTimestamp = webChartHeightTime;
+      await updateHealthHeight(widget.healthHeight, widget.heightTimestamp);
     }
 
-    bool success = await updateHealthHeight(
-      widget.healthHeight,
-      widget.heightTimestamp,
-    );
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Health data updated successfully.')));
-      setState(() {
-        _showHealthUpdateButton = false;
-      });
+    if (webChartWeightTime != null && webChartWeightTime.isAfter(widget.weightTimestamp)) {
+      widget.healthWeight = _getVitalResult('29463-7', widget.healthWeight);
+      widget.weightTimestamp = webChartWeightTime;
+      await updateHealthWeight(widget.healthWeight, widget.weightTimestamp);
     }
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Health data updated successfully.')));
+
+    setState(() {
+      _showHealthUpdateButton = false;
+    });
   }
 
   Future<void> _fetchAndDisplayFhirPatientVitals() async {
@@ -188,7 +194,10 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Patient Details and Vitals'),
+        title: Text(
+          'Patient Details and Vitals',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
         actions: [
           IconButton(
             icon: Icon(Icons.home),
@@ -204,14 +213,47 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
           children: [
             ExpansionTile(
               leading: Icon(Icons.person),
-              title: Text('Patient Details'),
+              title: Text(
+                'Patient Details',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+              ),
               children: [
-                ListTile(title: Text('ID: ${widget.patientData['pat_id']}')),
-                ListTile(title: Text('First Name: ${widget.patientData['first_name']}')),
-                ListTile(title: Text('Last Name: ${widget.patientData['last_name']}')),
-                ListTile(title: Text('Email: ${widget.patientData['email']}')),
-                ListTile(title: Text('Birth Date: ${widget.patientData['birth_date']}')),
-                ListTile(title: Text('Phone: ${widget.patientData['cell_phone']}')),
+                ListTile(
+                  title: Text(
+                    'ID: ${widget.patientData['pat_id']}',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ),
+                ListTile(
+                  title: Text(
+                    'First Name: ${widget.patientData['first_name']}',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ),
+                ListTile(
+                  title: Text(
+                    'Last Name: ${widget.patientData['last_name']}',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ),
+                ListTile(
+                  title: Text(
+                    'Email: ${widget.patientData['email']}',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ),
+                ListTile(
+                  title: Text(
+                    'Birth Date: ${widget.patientData['birth_date']}',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ),
+                ListTile(
+                  title: Text(
+                    'Phone: ${widget.patientData['cell_phone']}',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ),
                 ElevatedButton(
                   onPressed: () async {
                     final fhirData = await getFhirPatientResource(widget.patientData['pat_id']);
@@ -230,7 +272,10 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
             ),
             ExpansionTile(
               leading: Icon(Icons.favorite),
-              title: Text('Vitals'),
+              title: Text(
+                'Vitals',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+              ),
               children: [
                 ...widget.vitals.map((vital) {
                   final isBloodPressure = vital['name'] == 'Blood Pressure';
@@ -243,31 +288,44 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
                   return ListTile(
                     title: Text(
                       '${vital['name']}: $result ${vital['units']} (${timestamp})',
+                      style: TextStyle(fontSize: 16),
                     ),
                   );
                 }).toList(),
-                if (_showUpdateButton || _showHealthUpdateButton) ...[
+                if (_updateMessage.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Text(
                       _updateMessage,
-                      style: TextStyle(color: Colors.red),
+                      style: TextStyle(color: Colors.red, fontSize: 16),
                     ),
                   ),
-                  if (_showUpdateButton)
-                    ElevatedButton(
-                      onPressed: _updateVitals,
-                      child: Text('Update WebChart with Health Data'),
-                    ),
-                  if (_showHealthUpdateButton)
-                    ElevatedButton(
-                      onPressed: _updateHealthHeight,
-                      child: Text('Update Health with WebChart Data'),
-                    ),
-                ],
+                SizedBox(height: 8.0), // Add space between buttons
+                ElevatedButton(
+                  onPressed: _showWebChartUpdateButton ? _updateVitals : null,
+                  child: Text('Update WebChart with Health Data'),
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
+                    textStyle: TextStyle(fontSize: 16),
+                  ),
+                ),
+                SizedBox(height: 8.0), // Add space between buttons
+                ElevatedButton(
+                  onPressed: _showHealthUpdateButton ? _updateHealthData : null,
+                  child: Text('Update Health Data from WebChart'),
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
+                    textStyle: TextStyle(fontSize: 16),
+                  ),
+                ),
+                SizedBox(height: 8.0), // Add space between buttons
                 ElevatedButton(
                   onPressed: _fetchAndDisplayFhirPatientVitals,
                   child: Text('Fetch FHIR Patient Vitals Resource'),
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
+                    textStyle: TextStyle(fontSize: 16),
+                  ),
                 ),
               ],
             ),

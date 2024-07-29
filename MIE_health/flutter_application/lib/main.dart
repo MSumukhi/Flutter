@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:health/health.dart';
 import 'webchart_service.dart';
 import 'patient_details_page.dart';
+import 'profile_page.dart'; // Import ProfilePage
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() => runApp(MyApp());
 
@@ -40,11 +42,13 @@ class _MyHomePageState extends State<MyHomePage> {
   Map<String, dynamic>? _patientData;
   List<Map<String, dynamic>> _vitals = [];
   HealthFactory _health = HealthFactory();
+  String _userName = '';
 
   @override
   void initState() {
     super.initState();
     fetchHealthData();
+    loadUserName();
   }
 
   Future<void> fetchHealthData() async {
@@ -52,6 +56,13 @@ class _MyHomePageState extends State<MyHomePage> {
     await fetchHeightAndWeight();
     await fetchBloodPressure();
     setState(() {});
+  }
+
+  Future<void> loadUserName() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _userName = prefs.getString('userName') ?? 'User';
+    });
   }
 
   Future<void> fetchSteps() async {
@@ -329,6 +340,15 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text('Health Data'),
         actions: [
           IconButton(
+            icon: Icon(Icons.person),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => ProfilePage()), // Navigate to ProfilePage
+              );
+            },
+          ),
+          IconButton(
             icon: Icon(Icons.refresh),
             onPressed: fetchHealthData,
           ),
@@ -352,11 +372,16 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             child: Padding(
               padding: const EdgeInsets.all(20.0),
-              child: SingleChildScrollView( // Add SingleChildScrollView to handle overflow
+              child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Text(
+                      'Hello, $_userName!',
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 20),
                     ListTile(
                       leading: Icon(Icons.directions_walk),
                       title: Text('Total Steps:'),
