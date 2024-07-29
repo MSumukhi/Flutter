@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'webchart_service.dart';
 import 'fhir_patient_page.dart';
 import 'update_health_service.dart';
+import 'package:health/health.dart';
 
 class PatientDetailsPage extends StatefulWidget {
   final Map<String, dynamic> patientData;
@@ -162,13 +163,13 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
     if (webChartHeightTime != null && webChartHeightTime.isAfter(widget.heightTimestamp)) {
       widget.healthHeight = _getVitalResult('8302-2', widget.healthHeight);
       widget.heightTimestamp = webChartHeightTime;
-      await updateHealthHeight(widget.healthHeight, widget.heightTimestamp);
+      await updateHealthData(HealthDataType.HEIGHT, feetToMeters(widget.healthHeight), widget.heightTimestamp);
     }
 
     if (webChartWeightTime != null && webChartWeightTime.isAfter(widget.weightTimestamp)) {
       widget.healthWeight = _getVitalResult('29463-7', widget.healthWeight);
       widget.weightTimestamp = webChartWeightTime;
-      await updateHealthWeight(widget.healthWeight, widget.weightTimestamp);
+      await updateHealthData(HealthDataType.WEIGHT, poundsToKg(widget.healthWeight), widget.weightTimestamp);
     }
 
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Health data updated successfully.')));

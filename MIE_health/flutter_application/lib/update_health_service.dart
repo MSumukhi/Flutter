@@ -2,52 +2,24 @@ import 'package:health/health.dart';
 
 HealthFactory _health = HealthFactory();
 
-Future<bool> updateHealthHeight(double heightInFeet, DateTime timestamp) async {
-  double heightInMeters = feetToMeters(heightInFeet);
-  print('Height being updated to Health app (in meters): $heightInMeters');
-  var types = [HealthDataType.HEIGHT];
+Future<bool> updateHealthData(HealthDataType type, double value, DateTime timestamp) async {
+  print('Data being updated to Health app (type: $type): $value');
+  var types = [type];
   var permissions = [HealthDataAccess.WRITE];
 
   bool requested = await _health.requestAuthorization(types, permissions: permissions);
   if (requested) {
     try {
-      bool success = await _health.writeHealthData(heightInMeters, HealthDataType.HEIGHT, timestamp, timestamp);
+      bool success = await _health.writeHealthData(value, type, timestamp, timestamp);
       if (success) {
-        print('Successfully updated health height data.');
+        print('Successfully updated health data (type: $type).');
         return true;
       } else {
-        print('Failed to update health height data.');
+        print('Failed to update health data (type: $type).');
         return false;
       }
     } catch (e) {
-      print('Error updating health height data: $e');
-      return false;
-    }
-  } else {
-    print('Authorization not granted.');
-    return false;
-  }
-}
-
-Future<bool> updateHealthWeight(double weightInPounds, DateTime timestamp) async {
-  double weightInKg = poundsToKg(weightInPounds);
-  print('Weight being updated to Health app (in kg): $weightInKg');
-  var types = [HealthDataType.WEIGHT];
-  var permissions = [HealthDataAccess.WRITE];
-
-  bool requested = await _health.requestAuthorization(types, permissions: permissions);
-  if (requested) {
-    try {
-      bool success = await _health.writeHealthData(weightInKg, HealthDataType.WEIGHT, timestamp, timestamp);
-      if (success) {
-        print('Successfully updated health weight data.');
-        return true;
-      } else {
-        print('Failed to update health weight data.');
-        return false;
-      }
-    } catch (e) {
-      print('Error updating health weight data: $e');
+      print('Error updating health data (type: $type): $e');
       return false;
     }
   } else {
