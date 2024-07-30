@@ -11,10 +11,12 @@ class PatientDetailsPage extends StatefulWidget {
   double healthWeight;
   final double healthSystolic;
   final double healthDiastolic;
+  double healthHeartRate;  // Made non-final to allow modification
   DateTime heightTimestamp;
   DateTime weightTimestamp;
   final DateTime systolicTimestamp;
   final DateTime diastolicTimestamp;
+  DateTime heartRateTimestamp;  // Made non-final to allow modification
 
   PatientDetailsPage({
     super.key,
@@ -28,6 +30,8 @@ class PatientDetailsPage extends StatefulWidget {
     required this.weightTimestamp,
     required this.systolicTimestamp,
     required this.diastolicTimestamp,
+    required this.healthHeartRate,  // Added heart rate
+    required this.heartRateTimestamp,  // Added heart rate timestamp
   });
 
   @override
@@ -48,37 +52,50 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
   void _compareVitals() {
     DateTime? webChartHeightTime = _getVitalTimestamp('8302-2');
     DateTime? webChartWeightTime = _getVitalTimestamp('29463-7');
+    DateTime? webChartHeartRateTime = _getVitalTimestamp('8867-4');  // Get WebChart heart rate timestamp
 
     print('Comparing WebChart and Health app data:');
     print('WebChart Height Timestamp: $webChartHeightTime');
     print('Health App Height Timestamp: ${widget.heightTimestamp}');
     print('WebChart Weight Timestamp: $webChartWeightTime');
     print('Health App Weight Timestamp: ${widget.weightTimestamp}');
+    print('WebChart Heart Rate Timestamp: $webChartHeartRateTime');  // Print heart rate timestamp
+    print('Health App Heart Rate Timestamp: ${widget.heartRateTimestamp}');
 
     bool shouldUpdateWebChartHeight = false;
     bool shouldUpdateHealthHeight = false;
     bool shouldUpdateWebChartWeight = false;
     bool shouldUpdateHealthWeight = false;
+    bool shouldUpdateWebChartHeartRate = false;  // Heart rate update flag
+    bool shouldUpdateHealthHeartRate = false;  // Heart rate update flag
 
-    if (webChartHeightTime != null && webChartHeightTime.isAfter(widget.heightTimestamp)) {
-      shouldUpdateHealthHeight = true;
+    if (webChartHeightTime != null && !compareTimestampsWithTolerance(webChartHeightTime, widget.heightTimestamp)) {
+      if (webChartHeightTime.isAfter(widget.heightTimestamp)) {
+        shouldUpdateHealthHeight = true;
+      } else {
+        shouldUpdateWebChartHeight = true;
+      }
     }
 
-    if (widget.heightTimestamp.isAfter(webChartHeightTime ?? DateTime(0))) {
-      shouldUpdateWebChartHeight = true;
+    if (webChartWeightTime != null && !compareTimestampsWithTolerance(webChartWeightTime, widget.weightTimestamp)) {
+      if (webChartWeightTime.isAfter(widget.weightTimestamp)) {
+        shouldUpdateHealthWeight = true;
+      } else {
+        shouldUpdateWebChartWeight = true;
+      }
     }
 
-    if (webChartWeightTime != null && webChartWeightTime.isAfter(widget.weightTimestamp)) {
-      shouldUpdateHealthWeight = true;
-    }
-
-    if (widget.weightTimestamp.isAfter(webChartWeightTime ?? DateTime(0))) {
-      shouldUpdateWebChartWeight = true;
+    if (webChartHeartRateTime != null && !compareTimestampsWithTolerance(webChartHeartRateTime, widget.heartRateTimestamp)) {
+      if (webChartHeartRateTime.isAfter(widget.heartRateTimestamp)) {
+        shouldUpdateHealthHeartRate = true;  // Set heart rate update flag
+      } else {
+        shouldUpdateWebChartHeartRate = true;  // Set heart rate update flag
+      }
     }
 
     setState(() {
-      _showWebChartUpdateButton = shouldUpdateWebChartHeight || shouldUpdateWebChartWeight;
-      _showHealthUpdateButton = shouldUpdateHealthHeight || shouldUpdateHealthWeight;
+      _showWebChartUpdateButton = shouldUpdateWebChartHeight || shouldUpdateWebChartWeight || shouldUpdateWebChartHeartRate;  // Include heart rate
+      _showHealthUpdateButton = shouldUpdateHealthHeight || shouldUpdateHealthWeight || shouldUpdateHealthHeartRate;  // Include heart rate
       _updateMessage = '';
 
       if (shouldUpdateHealthHeight) {
@@ -90,6 +107,11 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
         _updateMessage += 'There is a more recent weight value in WebChart data.\n';
       } else if (shouldUpdateWebChartWeight) {
         _updateMessage += 'There is a more recent weight value in Health data.\n';
+      }
+      if (shouldUpdateHealthHeartRate) {
+        _updateMessage += 'There is a more recent heart rate value in WebChart data.\n';  // Heart rate message
+      } else if (shouldUpdateWebChartHeartRate) {
+        _updateMessage += 'There is a more recent heart rate value in Health data.\n';  // Heart rate message
       }
     });
   }
@@ -131,10 +153,12 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
       widget.healthWeight,
       widget.healthSystolic,
       widget.healthDiastolic,
+      widget.healthHeartRate,  // Include heart rate
       widget.heightTimestamp,
       widget.weightTimestamp,
       widget.systolicTimestamp,
       widget.diastolicTimestamp,
+      widget.heartRateTimestamp  // Include heart rate timestamp
     );
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('WebChart updated successfully.')));
 
@@ -148,6 +172,8 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
         widget.vitals.firstWhere((vital) => vital['loinc_num'] == '8462-4')['result'] = widget.healthDiastolic.toStringAsFixed(2);
         widget.vitals.firstWhere((vital) => vital['loinc_num'] == '8480-6')['date'] = widget.systolicTimestamp.toIso8601String();
         widget.vitals.firstWhere((vital) => vital['loinc_num'] == '8462-4')['date'] = widget.diastolicTimestamp.toIso8601String();
+        widget.vitals.firstWhere((vital) => vital['loinc_num'] == '8867-4')['result'] = widget.healthHeartRate.toStringAsFixed(2);  // Update heart rate
+        widget.vitals.firstWhere((vital) => vital['loinc_num'] == '8867-4')['date'] = widget.heartRateTimestamp.toIso8601String();  // Update heart rate timestamp
       } catch (e) {
         print('Error updating vitals: $e');
       }
@@ -159,6 +185,7 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
   Future<void> _updateHealthData() async {
     DateTime? webChartHeightTime = _getVitalTimestamp('8302-2');
     DateTime? webChartWeightTime = _getVitalTimestamp('29463-7');
+    DateTime? webChartHeartRateTime = _getVitalTimestamp('8867-4');  // Get WebChart heart rate timestamp
 
     if (webChartHeightTime != null && webChartHeightTime.isAfter(widget.heightTimestamp)) {
       widget.healthHeight = _getVitalResult('8302-2', widget.healthHeight);
@@ -170,6 +197,12 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
       widget.healthWeight = _getVitalResult('29463-7', widget.healthWeight);
       widget.weightTimestamp = webChartWeightTime;
       await updateHealthData(HealthDataType.WEIGHT, poundsToKg(widget.healthWeight), widget.weightTimestamp);
+    }
+
+    if (webChartHeartRateTime != null && webChartHeartRateTime.isAfter(widget.heartRateTimestamp)) {
+      widget.healthHeartRate = _getVitalResult('8867-4', widget.healthHeartRate);
+      widget.heartRateTimestamp = webChartHeartRateTime;
+      await updateHealthData(HealthDataType.HEART_RATE, widget.healthHeartRate, widget.heartRateTimestamp);
     }
 
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Health data updated successfully.')));
@@ -280,12 +313,17 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
               children: [
                 ...widget.vitals.map((vital) {
                   final isBloodPressure = vital['name'] == 'Blood Pressure';
+                  final isHeartRate = vital['name'] == 'Pulse';  // Check if it's heart rate
                   final result = isBloodPressure
                       ? '${widget.healthSystolic.toStringAsFixed(2)} / ${widget.healthDiastolic.toStringAsFixed(2)}'
-                      : vital['result'];
+                      : isHeartRate
+                      ? widget.healthHeartRate.toStringAsFixed(2)
+                      : vital['result'];  // Display heart rate
                   final timestamp = isBloodPressure
                       ? widget.systolicTimestamp.toIso8601String()
-                      : vital['date'];
+                      : isHeartRate
+                      ? widget.heartRateTimestamp.toIso8601String()
+                      : vital['date'];  // Display heart rate timestamp
                   return ListTile(
                     title: Text(
                       '${vital['name']}: $result ${vital['units']} (${timestamp})',

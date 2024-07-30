@@ -35,10 +35,12 @@ class _MyHomePageState extends State<MyHomePage> {
   double _weight = 0;
   double _systolic = 0;
   double _diastolic = 0;
+  double _heartRate = 0;  // Added heart rate variable
   DateTime _heightTimestamp = DateTime.now();
   DateTime _weightTimestamp = DateTime.now();
   DateTime _systolicTimestamp = DateTime.now();
   DateTime _diastolicTimestamp = DateTime.now();
+  DateTime _heartRateTimestamp = DateTime.now();  // Added heart rate timestamp
   Map<String, dynamic>? _patientData;
   List<Map<String, dynamic>> _vitals = [];
   HealthFactory _health = HealthFactory();
@@ -55,6 +57,7 @@ class _MyHomePageState extends State<MyHomePage> {
     await fetchSteps();
     await fetchHeightAndWeight();
     await fetchBloodPressure();
+    await fetchHeartRate(); // Added call to fetch heart rate
     setState(() {});
   }
 
@@ -196,6 +199,42 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  Future<void> fetchHeartRate() async {
+    var types = [HealthDataType.HEART_RATE];  // Added heart rate data type
+
+    final now = DateTime.now();
+    final startDate = now.subtract(Duration(days: 365 * 2));
+
+    bool requested = await _health.requestAuthorization(types);
+    if (requested) {
+      try {
+        List<HealthDataPoint> healthData = await _health.getHealthDataFromTypes(startDate, now, types);
+
+        double heartRate = 0;
+        DateTime? heartRateTimestamp;
+
+        for (var data in healthData) {
+          if (data.type == HealthDataType.HEART_RATE && (heartRateTimestamp == null || data.dateFrom.isAfter(heartRateTimestamp))) {
+            heartRate = data.value.toDouble();
+            heartRateTimestamp = data.dateFrom;
+          }
+        }
+
+        setState(() {
+          _heartRate = heartRate;
+          if (heartRateTimestamp != null) _heartRateTimestamp = heartRateTimestamp;
+        });
+
+        print('Heart Rate: $heartRate');
+        print('Heart Rate timestamp: $_heartRateTimestamp');
+      } catch (error) {
+        print("Caught exception in fetchHeartRate: $error");
+      }
+    } else {
+      print("Authorization not granted - error in authorization");
+    }
+  }
+
   Future<void> showLoginDialog() async {
     String username = '';
     String password = '';
@@ -269,6 +308,8 @@ class _MyHomePageState extends State<MyHomePage> {
               weightTimestamp: _weightTimestamp,
               systolicTimestamp: _systolicTimestamp,
               diastolicTimestamp: _diastolicTimestamp,
+              healthHeartRate: _heartRate,  // Pass heart rate to details page
+              heartRateTimestamp: _heartRateTimestamp,  // Pass heart rate timestamp
             ),
           ),
         );
@@ -324,6 +365,7 @@ class _MyHomePageState extends State<MyHomePage> {
       {'name': 'O2 Sat', 'result': '0', 'units': '', 'date': ''},
       {'name': 'Head Circ', 'result': '0', 'units': '', 'date': ''},
       {'name': 'Waist Circ', 'result': '0', 'units': '', 'date': ''},
+      {'name': 'Heart Rate', 'result': '0', 'units': 'bpm', 'date': ''},  // Added heart rate
     ];
   }
 
@@ -380,7 +422,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     Text(
                       'Hello, $_userName!',
                       style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                    ),
+                      ),
                     SizedBox(height: 20),
                     ListTile(
                       leading: Icon(Icons.directions_walk),
@@ -396,6 +438,11 @@ class _MyHomePageState extends State<MyHomePage> {
                       leading: Icon(Icons.fitness_center),
                       title: Text('Weight:'),
                       subtitle: Text('${_weight.toStringAsFixed(1)} lbs', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                    ),
+                    ListTile(
+                      leading: Icon(Icons.favorite),
+                      title: Text('Heart Rate:'),
+                      subtitle: Text('${_heartRate.toStringAsFixed(1)} bpm', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                     ),
                     SizedBox(height: 20),
                     Center(

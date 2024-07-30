@@ -70,10 +70,12 @@ Future<void> updateWebChartWithHealthData(
   double weight,
   double systolic,
   double diastolic,
+  double heartRate,  // Added heart rate
   DateTime heightTimestamp,
   DateTime weightTimestamp,
   DateTime systolicTimestamp,
-  DateTime diastolicTimestamp
+  DateTime diastolicTimestamp,
+  DateTime heartRateTimestamp  // Added heart rate timestamp
 ) async {
   if (bearerToken != null) {
     try {
@@ -105,6 +107,13 @@ Future<void> updateWebChartWithHealthData(
           'obs_result': diastolic.toStringAsFixed(2),
           'obs_units': 'mmHg',
           'observed_datetime': diastolicTimestamp.toIso8601String()
+        },
+        {
+          'pat_id': patientId,
+          'loinc_num': '8867-4', // Heart Rate LOINC code
+          'obs_result': heartRate.toStringAsFixed(2),
+          'obs_units': 'bpm',
+          'observed_datetime': heartRateTimestamp.toIso8601String()
         }
       ];
 
@@ -157,6 +166,11 @@ Future<List<Map<String, dynamic>>> getVitalsData(String patientId) async {
       if (response.statusCode == 200) {
         final List<dynamic> observations = jsonDecode(response.body)['db'];
 
+        // Debugging print statements
+        for (var obs in observations) {
+          print('Observation: ${obs['obs_name']} - ${obs['obs_result']} ${obs['obs_units']} at ${obs['observed_datetime']}');
+        }
+
         // Filter and map observations to vitals
         final List<Map<String, dynamic>> vitals = observations
             .where((obs) => observationNameMapping.containsKey(obs['obs_name']))
@@ -176,6 +190,13 @@ Future<List<Map<String, dynamic>>> getVitalsData(String patientId) async {
             latestVitals[vital['loinc_num']] = vital;
           }
         }
+
+        // Printing each vital retrieved for debugging
+        print('Latest Vitals:');
+        for (var vital in latestVitals.values) {
+          print('${vital['name']}: ${vital['result']} ${vital['units']} at ${vital['date']}');
+        }
+
         final allVitals = _getDefaultVitals().map((defaultVital) {
           return latestVitals[defaultVital['loinc_num']] ?? defaultVital;
         }).toList();
@@ -253,7 +274,7 @@ const Map<String, String> observationNameMapping = {
   'Systolic BP': '8480-6',
   'Diastolic BP': '8462-4',
   'Blood Pressure': '18684-1',  // Added the combined blood pressure code
-  'Pulse': '8867-4',
+  'HEART RATE': '8867-4',  // Added heart rate
   'BODY TEMPERATURE': '8310-5',
   'RESPIRATION RATE': '9279-1',
   'O2 Sat': '2708-6',
@@ -269,7 +290,7 @@ const Map<String, String> observationLoincMapping = {
   '8480-6': 'Systolic BP',
   '8462-4': 'Diastolic BP',
   '18684-1': 'Blood Pressure',  // Added the combined blood pressure name
-  '8867-4': 'Pulse',
+  '8867-4': 'Pulse',  // Added heart rate
   '8310-5': 'Temp',
   '9279-1': 'Resp',
   '2708-6': 'O2 Sat',
@@ -285,11 +306,15 @@ List<Map<String, dynamic>> _getDefaultVitals() {
     {'loinc_num': '8480-6', 'name': 'Systolic BP', 'result': '0', 'units': 'mmHg', 'date': ''},
     {'loinc_num': '8462-4', 'name': 'Diastolic BP', 'result': '0', 'units': 'mmHg', 'date': ''},
     {'loinc_num': '18684-1', 'name': 'Blood Pressure', 'result': '0/0', 'units': 'mmHg', 'date': ''},
-    {'loinc_num': '8867-4', 'name': 'Pulse', 'result': '0', 'units': '', 'date': ''},
+    {'loinc_num': '8867-4', 'name': 'Pulse', 'result': '0', 'units': 'bpm', 'date': ''},
     {'loinc_num': '8310-5', 'name': 'Temp', 'result': '0', 'units': '', 'date': ''},
     {'loinc_num': '9279-1', 'name': 'Resp', 'result': '0', 'units': '', 'date': ''},
     {'loinc_num': '2708-6', 'name': 'O2 Sat', 'result': '0', 'units': '', 'date': ''},
     {'loinc_num': '8287-5', 'name': 'Head Circ', 'result': '0', 'units': '', 'date': ''},
     {'loinc_num': '56115-9', 'name': 'Waist Circ', 'result': '0', 'units': '', 'date': ''}
   ];
+}
+
+bool compareTimestampsWithTolerance(DateTime first, DateTime second, {int toleranceMs = 200}) {
+  return (first.millisecondsSinceEpoch - second.millisecondsSinceEpoch).abs() < toleranceMs;
 }
